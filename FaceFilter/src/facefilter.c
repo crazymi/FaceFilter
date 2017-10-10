@@ -69,6 +69,9 @@ _main_layout_add(appdata_s *ad, Evas_Object *parent)
 	ad->camera_rect = evas_object_image_filled_add(evas);
 	elm_object_part_content_set(layout, "render", ad->camera_rect);
 
+	ad->image = elm_image_add(parent);
+	elm_object_part_content_set(layout, "gallery", ad->image);
+
 	return layout;
 }
 
@@ -95,12 +98,66 @@ _create_camera(appdata_s *ad)
 		camera_set_display_mode(ad->camera, CAMERA_DISPLAY_MODE_FULL);
 
 		camera_set_display_rotation(ad->camera, CAMERA_ROTATION_270);
-		camera_set_display_flip(ad->camera, CAMERA_FLIP_VERTICAL);
+		camera_set_display_flip(ad->camera, CAMERA_FLIP_NONE);
 	}
 	else {
 		ad->camera = NULL;
 	}
 
+}
+
+static inline char*
+gen_data_path(const char *file_name)
+{
+	static char* absolute_path = NULL;
+	char result[PATH_MAX] = "";
+	if(absolute_path == NULL)
+		absolute_path = app_get_data_path();
+	snprintf(result, sizeof(result), "%s/%s", absolute_path, file_name);
+	return strdup(result);
+}
+
+static char*
+_save_file(appdata_s *ad, camera_image_data_s* image)
+{
+	char buf[PATH_MAX] = "";
+	snprintf(buf, PATH_MAX, "camera_capture.jpg");
+	char *file_name = gen_data_path(buf);
+
+	FILE *f = fopen(file_name, "w");
+
+	if(f)
+	{
+		fwrite(image->data, image->size, 1, f);
+		fclose(f);
+	}
+	else
+	{
+		free(file_name);
+		file_name = NULL;
+	}
+	return file_name;
+}
+
+static void
+_on_camera_capture_cb(camera_image_data_s *image, camera_image_data_s *postview, camera_image_data_s *thumbnail, void *user_data)
+{
+	appdata_s *ad = user_data;
+	free(ad->image_path);
+	ad->image_path = _save_file(ad, image);
+}
+
+static void _on_camera_capture_completed_cb(void *user_data)
+{
+	appdata_s *ad = user_data;
+	camera_start_preview(ad->camera);
+}
+
+static void
+btn_capture_cb(void* data, Evas_Object *obj, void* event_info)
+{
+	appdata_s * ad = (appdata_s *)data;
+	camera_start_capture(ad->camera, _on_camera_capture_cb, _on_camera_capture_completed_cb, ad);
 }
 
 static void
@@ -150,6 +207,11 @@ create_base_gui(appdata_s *ad)
 	Evas_Object *layout = _main_layout_add(ad, ad->win);
 	my_box_pack(ad->box, layout, 0.9, 1.0, -1.0, -1.0);
 
+	Evas_Object *btn = elm_button_add(ad->win);
+	elm_object_text_set(btn, "#");
+	evas_object_smart_callback_add(btn, "clicked", btn_capture_cb, ad);
+	my_box_pack(ad->box, btn, 0.1, 0.0, -1.0, 0.5);
+
 	_create_camera(ad);
 	camera_start_preview(ad->camera);
 	/* Show window after base gui is set up */
@@ -192,6 +254,7 @@ static void
 app_terminate(void *data)
 {
 	/* Release all resources. */
+	_destroy_camera(data);
 }
 
 static void
@@ -218,7 +281,34 @@ static void
 ui_app_orient_changed(app_event_info_h event_info, void *user_data)
 {
 	/*APP_EVENT_DEVICE_ORIENTATION_CHANGED*/
-	return;
+	appdata_s *ad = user_data;
+	app_device_orientation_e screen_rot = 0;
+	camera_rotation_e camera_rot = CAMERA_ROTATION_270;
+	bool horizontal_box = false;
+
+	app_event_get_device_orientation(event_info, &screen_rot);
+	switch(screen_rot)
+	{
+	case APP_DEVICE_ORIENTATION_0:
+		camera_rot = CAMERA_ROTATION_270;
+		break;
+	case APP_DEVICE_ORIENTATION_90:
+		camera_rot = CAMERA_ROTATION_180;
+		horizontal_box = true;
+		break;
+	case APP_DEVICE_ORIENTATION_180:
+		camera_rot = CAMERA_ROTATION_90;
+		break;
+	case APP_DEVICE_ORIENTATION_270:
+		camera_rot = CAMERA_ROTATION_NONE;
+		horizontal_box = true;
+		break;
+	}
+
+	camera_set_display_rotation(ad->camera, camera_rot);
+	elm_win_rotation_with_resize_set(ad->win, screen_rot);
+	elm_box_horizontal_set(ad->box, horizontal_box);
+
 }
 
 static void
@@ -254,11 +344,8 @@ main(int argc, char *argv[])
 	event_callback.resume = app_resume;
 	event_callback.app_control = app_control;
 
-	ui_app_add_event_handler(&handlers[APP_EVENT_LOW_BATTERY], APP_EVENT_LOW_BATTERY, ui_app_low_battery, &ad);
-	ui_app_add_event_handler(&handlers[APP_EVENT_LOW_MEMORY], APP_EVENT_LOW_MEMORY, ui_app_low_memory, &ad);
 	ui_app_add_event_handler(&handlers[APP_EVENT_DEVICE_ORIENTATION_CHANGED], APP_EVENT_DEVICE_ORIENTATION_CHANGED, ui_app_orient_changed, &ad);
 	ui_app_add_event_handler(&handlers[APP_EVENT_LANGUAGE_CHANGED], APP_EVENT_LANGUAGE_CHANGED, ui_app_lang_changed, &ad);
-	ui_app_add_event_handler(&handlers[APP_EVENT_REGION_FORMAT_CHANGED], APP_EVENT_REGION_FORMAT_CHANGED, ui_app_region_changed, &ad);
 
 	ret = ui_app_main(argc, argv, &event_callback, &ad);
 	if (ret != APP_ERROR_NONE) {

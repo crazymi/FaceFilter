@@ -4,11 +4,11 @@
 <SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"></SignatureMethod>
 <Reference URI="author-signature.xml">
 <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"></DigestMethod>
-<DigestValue>wEuKAcG7omaKNYaBYpVoBXVqO1BBVffeSDeE2u+X2DA=</DigestValue>
+<DigestValue>tGq9y+lSsPeVtQbEaEnjPz0MRYKLSWCBezuwzOaapok=</DigestValue>
 </Reference>
 <Reference URI="bin%2Ffacefilter">
 <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"></DigestMethod>
-<DigestValue>y9UM61oJ/dMEu/Ub8gWyZvwR43RO8mUHNaMeowuVqzU=</DigestValue>
+<DigestValue>vozgkd7+g/nEELeTyJ9QLwUwSMo1tzKEc2JJXt8vsu8=</DigestValue>
 </Reference>
 <Reference URI="res%2Fedje%2Fcamera_capture.edj">
 <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"></DigestMethod>
@@ -31,9 +31,9 @@
 </Reference>
 </SignedInfo>
 <SignatureValue>
-EYVkRItByJ3WnWAnq+AfFCO3TXT80VdYAj4nXkzpw8qVxkK5HkqGHOcpjjQ4QRSjxSfb2fNFYiev
-NtjhQXxoDQQADlxyfk+4ktz3O68CFrmopDp5aTHRWoStQxkP+3p1nGjFvOvmkuwToziMSXf8zmFr
-o+CMQ8evnzW2Xj2RCt8=
+tuUPBwNZslBnuraFzHZrm5aELqvYJrROyIaZCTOZepin5getfw0Dby3nR5IJGJ9SL4Lq49oo/ydZ
+vCXp5zZoflHsYh1QbwnUUU9mFklI7mQaiS2/yzvY9goGRfxq3NkX49GnfS0X10fKEo7EAPBqSB19
+yv4x0gSFztBRh2PgrY8=
 </SignatureValue>
 <KeyInfo>
 <X509Data>
