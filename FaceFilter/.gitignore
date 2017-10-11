@@ -122,3 +122,4 @@ local.properties
 .*_delta*
 
 # End of https://www.gitignore.io/api/c,eclipse
+/Debug/
