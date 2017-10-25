@@ -513,7 +513,7 @@ static int camera_attr_get_filter_range(int *min,
         int *max)
 {
 	*min = 0;
-	*max = 0;
+	*max = 3;
 	return 0;
 }
 
@@ -535,6 +535,75 @@ static int camera_attr_set_filter(int filter)
 {
 	cam_data.filter = filter;
 	return 0;
+}
+
+void _chroma_mod_sepia(unsigned char* data, uint64_t size)
+{
+    uint64_t i = 0;
+
+	for (i=0; i<size; i++)
+	{
+		int Cval = (int)(data[i]);
+
+		if (i%2 ==0) //Even byte reflects Cb chroma value
+		{
+			Cval = 114; //Setting the Cb value to look like sepia
+		}
+		else //Odd byte reflects Cr chroma value
+		{
+			Cval = 144; //Setting the Cr value to look like sepia
+		}
+		data[i] = (unsigned char)Cval;
+	}
+}
+
+void _grayscale_mod(unsigned char* data, uint64_t size)
+{
+	uint64_t i = 0;
+	for (i=0; i < size; i++)
+	{
+		data[i] = 128;
+	}
+}
+
+void _invert_mod(unsigned char* data, uint64_t size)
+{
+	uint64_t i = 0;
+	for (i=0; i < size; i++)
+	{
+		data[i] = 255 - data[i];
+	}
+}
+
+void _camera_preview_callback(camera_preview_data_s *frame, void *data)
+{
+    if (frame->format == CAMERA_PIXEL_FORMAT_NV12 && frame->num_of_planes == 2)
+	{
+    	// frame->data.double_plane.y_size  : 921600
+    	// frame->data.double_plane.uv_size : 460800
+    	switch(cam_data.filter)
+    	{
+    	case 0: // original
+    		break;
+    	case 1: // sepia
+			_chroma_mod_sepia(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
+    		break;
+    	case 2: // grayscale
+    		_grayscale_mod(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
+			break;
+    	case 3: // invert
+    		// _invert_mod(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
+    		_invert_mod(frame->data.double_plane.y, frame->data.double_plane.y_size + frame->data.double_plane.uv_size);
+    		break;
+    	default:
+    		break;
+    	}
+	}
+	else
+	{
+		dlog_print(DLOG_ERROR, LOG_TAG, "This preview frame format is not supported!");
+		//we do nothing, the preview is left intact and displayed without modifications
+	}
 }
 
 static void __camera_cb_filter(void *data, Evas_Object *obj, void *event_info)
@@ -560,7 +629,8 @@ static void __camera_cb_filter(void *data, Evas_Object *obj, void *event_info)
 	    }
 
 	    /* Set new value of the camera brightness attribute */
-	    filter = filter == max ? min : ++filter;
+
+	     filter = filter == max ? min : ++filter;
 	    error_code = camera_attr_set_filter(filter);
 	    if (CAMERA_ERROR_NONE != error_code) {
 	        if (CAMERA_ERROR_NOT_SUPPORTED != error_code) {
@@ -572,8 +642,12 @@ static void __camera_cb_filter(void *data, Evas_Object *obj, void *event_info)
 	    } else
 	        PRINT_MSG("Filter set to %d", filter);
 
-	    /* TODO: Apply filter to preview image */
 
+	    /* TODO: Apply filter to preview image */
+	    if (camera_set_preview_cb(cam_data.g_camera, _camera_preview_callback, NULL) == CAMERA_ERROR_NONE)
+	    {
+	    	PRINT_MSG("ready to modify");
+	    }
 }
 
 static int camera_attr_get_sticker_range(int* min,
