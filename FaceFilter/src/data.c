@@ -38,6 +38,9 @@ typedef struct _camdata {
     bool cam_prev;
     int filter;
     int sticker;
+
+    int width;
+    int height;
 } camdata;
 static camdata cam_data;
 
@@ -513,7 +516,7 @@ static int camera_attr_get_filter_range(int *min,
         int *max)
 {
 	*min = 0;
-	*max = 3;
+	*max = 4;
 	return 0;
 }
 
@@ -568,17 +571,88 @@ void _grayscale_mod(unsigned char* data, uint64_t size)
 
 void _invert_mod(unsigned char* data, uint64_t size)
 {
-	uint64_t i = 0;
+	uint_fast64_t i = 0; // can't find difference between uint64 vs fast64
 	for (i=0; i < size; i++)
 	{
 		data[i] = 255 - data[i];
 	}
 }
 
+void _emboss_mod(unsigned char* data, uint64_t size)
+{
+
+}
+
+void _gaussian_mod(unsigned char* data, uint64_t size)
+{
+	uint64_t x =0;
+	uint64_t w = (uint64_t) cam_data.width;
+//	float xmask[5] = {.0003, .1065, .7866, .1065, .0003};
+	float mask[9] = {.0113, .0838, .0113, .0838, .6193, .0838, .0113, .0838, .0113};
+
+	unsigned char* ndata;
+	ndata = (unsigned char*)malloc(sizeof(unsigned char)*size);
+
+	for(x=0; x<size; x++)
+	{
+		float val[9] = {0,};
+		if (x < w+1)
+			val[0] = 0;
+		else
+			val[0] = data[x-w-1] * mask[0];
+
+		if (x < w)
+			val[1] = 0;
+		else
+			val[1] = data[x-w] * mask[1];
+
+		if (x < w-1)
+			val[2] = 0;
+		else
+			val[2] = data[x-w+1] * mask[2];
+
+		if (x < 1)
+			val[3] = 0;
+		else
+			val[3] = data[x-1] * mask[3];
+
+		val[4] = data[x] * mask[4];
+
+		if (x+1 > size)
+			val[5] = 0;
+		else
+			val[5] = data[x+1] * mask[5];
+
+		if (x+w-1 > size)
+			val[6] = 0;
+		else
+			val[6] = data[x+w-1] * mask[6];
+
+		if (x+w > size)
+			val[7] = 0;
+		else
+			val[7] = data[x+w] * mask[7];
+
+		if (x+w+1 > size)
+			val[8] = 0;
+		else
+			val[8] = data[x+w+1] * mask[8];
+
+		float sum = 0;
+		for(int i=0;i<8;i++)
+			sum += val[i];
+
+		ndata[x] =(unsigned char) (sum/8);
+	}
+	data = ndata;
+}
+
 void _camera_preview_callback(camera_preview_data_s *frame, void *data)
 {
     if (frame->format == CAMERA_PIXEL_FORMAT_NV12 && frame->num_of_planes == 2)
 	{
+    	time_t sTime = clock();
+
     	// frame->data.double_plane.y_size  : 921600
     	// frame->data.double_plane.uv_size : 460800
     	switch(cam_data.filter)
@@ -595,9 +669,15 @@ void _camera_preview_callback(camera_preview_data_s *frame, void *data)
     		// _invert_mod(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
     		_invert_mod(frame->data.double_plane.y, frame->data.double_plane.y_size + frame->data.double_plane.uv_size);
     		break;
+    	case 4:
+    		_gaussian_mod(frame->data.double_plane.y, frame->data.double_plane.y_size);
+    		break;
     	default:
     		break;
     	}
+
+    	time_t eTime = clock();
+    	float gap = (float)(eTime-sTime)/(CLOCKS_PER_SEC);
 	}
 	else
 	{
@@ -891,6 +971,8 @@ void create_buttons_in_main_window(void)
     } else
         PRINT_MSG("Camera resolution set to: %d %d", resolution[0],
                 resolution[1]);
+    cam_data.height = resolution[0];
+    cam_data.width = resolution[1];
 
     /* Set the capture format for the camera. */
     error_code = camera_set_capture_format(cam_data.g_camera,
