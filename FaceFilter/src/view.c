@@ -117,27 +117,26 @@ static void _btn_clear_cb(void *data, Evas_Object *object, void *event_info)
  */
 void *_create_new_cd_display(char *name, void *callback)
 {
-    /* Create a scroller
+    /* Create a scroller */
     Evas_Object *scroller = elm_scroller_add(s_info.win);
     evas_object_size_hint_weight_set(scroller, EVAS_HINT_EXPAND,
             EVAS_HINT_EXPAND);
-*/
-    /* Create a new item */
-    //Elm_Object_Item *item = elm_naviframe_item_push(s_info.navi, /*"Multimedia"*/NULL,
-    //        NULL, NULL, scroller, NULL);
-    //elm_object_item_part_text_set(item, "subtitle", name);
 
-	/*
+    /* Create a new item */
+    Elm_Object_Item *item = elm_naviframe_item_push(s_info.navi, /*"Multimedia"*/NULL,
+            NULL, NULL, scroller, NULL);
+    elm_object_item_part_text_set(item, "subtitle", name);
+
+
     if (callback != NULL)
         elm_naviframe_item_pop_cb_set(item, (Elm_Naviframe_Item_Pop_Cb) callback,
                 NULL);
     else
         elm_naviframe_item_pop_cb_set(item, _pop_cb, NULL);
-*/
+
     /* Create main box */
-    //Evas_Object *box = elm_box_add(scroller);
-    //elm_object_content_set(scroller, box);
-	Evas_Object *box = elm_box_add(s_info.win);
+    Evas_Object *box = elm_box_add(scroller);
+    elm_object_content_set(scroller, box);
     elm_box_horizontal_set(box, EINA_FALSE);
     evas_object_size_hint_align_set(box, EVAS_HINT_FILL, EVAS_HINT_FILL);
     evas_object_size_hint_weight_set(box, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
