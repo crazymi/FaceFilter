@@ -154,6 +154,7 @@ void *_create_new_cd_display(char *name, void *callback)
 
     /* Create preview box */
     Evas_Object *mbox = elm_box_add(box);
+    elm_box_padding_set(mbox, 0, padding_between_buttons);
     elm_box_horizontal_set(mbox, EINA_FALSE);
     evas_object_size_hint_align_set(mbox, EVAS_HINT_FILL, EVAS_HINT_FILL);
     evas_object_size_hint_weight_set(mbox, EVAS_HINT_EXPAND, 0.8);

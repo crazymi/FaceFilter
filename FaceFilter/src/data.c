@@ -1200,7 +1200,7 @@ void create_buttons_in_main_window(void)
     cam_data.height = resolution[0];
     cam_data.width = resolution[1];
 
-    camera_foreach_supported_preview_format(cam_data.g_camera, _supported_preview_format_cb, NULL);
+    //camera_foreach_supported_preview_format(cam_data.g_camera, _supported_preview_format_cb, NULL);
 
     /* Set the capture format for the camera. */
     error_code = camera_set_capture_format(cam_data.g_camera,
