@@ -1079,7 +1079,7 @@ void create_buttons_in_main_window(void)
      * camera and taking the photo.
      */
     struct tmp *buf = _create_new_cd_display("Camera", NULL);
-    cam_data.cam_display = buf->mbox;
+    cam_data.display = buf->mbox;
 
     /* Create a box for the camera preview. */
     cam_data.cam_display_box = elm_box_add(cam_data.display);
@@ -1200,7 +1200,7 @@ void create_buttons_in_main_window(void)
     cam_data.height = resolution[0];
     cam_data.width = resolution[1];
 
-    //camera_foreach_supported_preview_format(cam_data.g_camera, _supported_preview_format_cb, NULL);
+    camera_foreach_supported_preview_format(cam_data.g_camera, _supported_preview_format_cb, NULL);
 
     /* Set the capture format for the camera. */
     error_code = camera_set_capture_format(cam_data.g_camera,
