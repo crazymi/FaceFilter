@@ -38,6 +38,9 @@ typedef struct _camdata {
     bool cam_prev;
     int filter;
     int sticker;
+
+    int width;
+    int height;
 } camdata;
 static camdata cam_data;
 
@@ -146,10 +149,16 @@ static bool _preview_resolution_cb(int width, int height, void *user_data)
  * @param user_data  The user data passed from the callback registration
  *                   function. This argument is not used in this case.
  */
+
+static bool _supported_preview_format_cb(camera_pixel_format_e format, void *user_data)
+{
+	PRINT_MSG("supported: %d", format);
+}
+
 static void _camera_completed_cb(void *user_data)
 {
     /* Start the camera preview again. */
-    int error_code = camera_start_preview(cam_data.g_camera);
+	int error_code = camera_start_preview(cam_data.g_camera);
     if (CAMERA_ERROR_NONE != error_code) {
         DLOG_PRINT_ERROR("camera_start_preview", error_code);
         PRINT_MSG("Could not restart the camera preview.");
@@ -513,7 +522,7 @@ static int camera_attr_get_filter_range(int *min,
         int *max)
 {
 	*min = 0;
-	*max = 0;
+	*max = MAX_FILTER;
 	return 0;
 }
 
@@ -535,6 +544,371 @@ static int camera_attr_set_filter(int filter)
 {
 	cam_data.filter = filter;
 	return 0;
+}
+
+void _chroma_mod_sepia(unsigned char* data, uint64_t size)
+{
+    uint64_t i = 0;
+
+	for (i=0; i<size; i++)
+	{
+		int Cval = (int)(data[i]);
+
+		if (i%2 ==0) //Even byte reflects Cb chroma value
+		{
+			Cval = 114; //Setting the Cb value to look like sepia
+		}
+		else //Odd byte reflects Cr chroma value
+		{
+			Cval = 144; //Setting the Cr value to look like sepia
+		}
+		data[i] = (unsigned char)Cval;
+	}
+}
+
+void _grayscale_mod(unsigned char* data, uint64_t size)
+{
+	uint64_t i = 0;
+	for (i=0; i < size; i++)
+	{
+		data[i] = 128;
+	}
+}
+
+void _invert_mod(unsigned char* data, uint64_t size)
+{
+	uint_fast64_t i = 0; // can't find difference between uint64 vs fast64
+	for (i=0; i < size; i++)
+	{
+		data[i] = 255 - data[i];
+	}
+}
+
+void _emboss_mod(unsigned char* data, uint64_t size)
+{
+	uint64_t x =0;
+	uint64_t w = (uint64_t) cam_data.width;
+	float mask[9] = {-2.0f, -1.0f, 0.0f,
+					-1.0f, 1.0f, 1.0f,
+					0.0f, 1.0f, 2.0f};
+
+	unsigned char* ndata;
+	ndata = (unsigned char*)malloc(sizeof(unsigned char)*size);
+
+	for(x=0; x<size; x++)
+	{
+		float val[9] = {0,};
+		if (x < w+1)
+			val[0] = 0;
+		else
+			val[0] = data[x-w-1] * mask[8];
+
+		if (x < w)
+			val[1] = 0;
+		else
+			val[1] = data[x-w] * mask[7];
+
+		if (x < w-1)
+			val[2] = 0;
+		else
+			val[2] = data[x-w+1] * mask[6];
+
+		if (x < 1)
+			val[3] = 0;
+		else
+			val[3] = data[x-1] * mask[5];
+
+		val[4] = data[x] * mask[4];
+
+		if (x+1 > size)
+			val[5] = 0;
+		else
+			val[5] = data[x+1] * mask[3];
+
+		if (x+w-1 > size)
+			val[6] = 0;
+		else
+			val[6] = data[x+w-1] * mask[2];
+
+		if (x+w > size)
+			val[7] = 0;
+		else
+			val[7] = data[x+w] * mask[1];
+
+		if (x+w+1 > size)
+			val[8] = 0;
+		else
+			val[8] = data[x+w+1] * mask[0];
+
+		float sum = 0;
+		for(int i=0;i<8;i++)
+			sum += val[i];
+
+		ndata[x] = (unsigned char) sum;
+		//ndata[x] =(unsigned char) (sum/8);
+	}
+	memcpy(data, ndata, sizeof(unsigned char)*size);
+}
+void _emboss_mod_uv(unsigned char* data, uint64_t size)
+{
+	uint64_t x =0;
+	uint64_t w = (uint64_t) cam_data.width;
+	float mask[9] = {-2.0f, -1.0f, 0.0f,
+						-1.0f, 1.0f, 1.0f,
+						0.0f, 1.0f, 2.0f};
+
+	unsigned char* ndata;
+	ndata = (unsigned char*)malloc(sizeof(unsigned char)*size);
+
+	for(x=0; x<size; x++)
+	{
+		float val[9] = {0,};
+		if (x < 8)
+			val[0] = 0;
+		else
+			val[0] = data[x-8] * mask[8];
+
+		if (x < 6)
+			val[1] = 0;
+		else
+			val[1] = data[x-6] * mask[7];
+
+		if (x < 4)
+			val[2] = 0;
+		else
+			val[2] = data[x-4] * mask[6];
+
+		if (x < 2)
+			val[3] = 0;
+		else
+			val[3] = data[x-2] * mask[5];
+
+		val[4] = data[x] * mask[4];
+
+		if (x+2 > size)
+			val[5] = 0;
+		else
+			val[5] = data[x+2] * mask[3];
+
+		if (x+4 > size)
+			val[6] = 0;
+		else
+			val[6] = data[x+4] * mask[2];
+
+		if (x+6 > size)
+			val[7] = 0;
+		else
+			val[7] = data[x+6] * mask[1];
+
+		if (x+8 > size)
+			val[8] = 0;
+		else
+			val[8] = data[x+8] * mask[0];
+
+		float sum = 0;
+		for(int i=0;i<8;i++)
+			sum += val[i];
+
+		ndata[x] = (unsigned char) sum;
+		//ndata[x] =(unsigned char) (sum/8);
+	}
+	memcpy(data, ndata, sizeof(unsigned char)*size);
+}
+
+void _gaussian_mod(unsigned char* data, uint64_t size)
+{
+	uint64_t x =0;
+	uint64_t w = (uint64_t) cam_data.width;
+//	float xmask[5] = {.0003, .1065, .7866, .1065, .0003};
+	float mask[9] = {.0113, .0838, .0113, .0838, .6193, .0838, .0113, .0838, .0113};
+
+	unsigned char* ndata;
+	ndata = (unsigned char*)malloc(sizeof(unsigned char)*size);
+
+	for(x=0; x<size; x++)
+	{
+		float val[9] = {0,};
+		if (x < w+1)
+			val[0] = 0;
+		else
+			val[0] = data[x-w-1] * mask[8];
+
+		if (x < w)
+			val[1] = 0;
+		else
+			val[1] = data[x-w] * mask[7];
+
+		if (x < w-1)
+			val[2] = 0;
+		else
+			val[2] = data[x-w+1] * mask[6];
+
+		if (x < 1)
+			val[3] = 0;
+		else
+			val[3] = data[x-1] * mask[5];
+
+		val[4] = data[x] * mask[4];
+
+		if (x+1 > size)
+			val[5] = 0;
+		else
+			val[5] = data[x+1] * mask[3];
+
+		if (x+w-1 > size)
+			val[6] = 0;
+		else
+			val[6] = data[x+w-1] * mask[2];
+
+		if (x+w > size)
+			val[7] = 0;
+		else
+			val[7] = data[x+w] * mask[1];
+
+		if (x+w+1 > size)
+			val[8] = 0;
+		else
+			val[8] = data[x+w+1] * mask[0];
+
+		float sum = 0;
+		for(int i=0;i<8;i++)
+			sum += val[i];
+
+		ndata[x] = (unsigned char) sum;
+		//ndata[x] =(unsigned char) (sum/8);
+	}
+	memcpy(data, ndata, sizeof(unsigned char)*size);
+}
+
+void _gaussian_mod_uv(unsigned char* data, uint64_t size)
+{
+	uint64_t x =0;
+	uint64_t w = (uint64_t) cam_data.width;
+	float mask[9] = {.0113, .0838, .0113, .0838, .6193, .0838, .0113, .0838, .0113};
+
+	unsigned char* ndata = (unsigned char*)malloc(sizeof(unsigned char)*size);
+
+	for(x=0; x<size; x++)
+	{
+		float val[9] = {0,};
+		if (x < 8)
+			val[0] = 0;
+		else
+			val[0] = data[x-8] * mask[8];
+
+		if (x < 6)
+			val[1] = 0;
+		else
+			val[1] = data[x-6] * mask[7];
+
+		if (x < 4)
+			val[2] = 0;
+		else
+			val[2] = data[x-4] * mask[6];
+
+		if (x < 2)
+			val[3] = 0;
+		else
+			val[3] = data[x-2] * mask[5];
+
+		val[4] = data[x] * mask[4];
+
+		if (x+2 > size)
+			val[5] = 0;
+		else
+			val[5] = data[x+2] * mask[3];
+
+		if (x+4 > size)
+			val[6] = 0;
+		else
+			val[6] = data[x+4] * mask[2];
+
+		if (x+6 > size)
+			val[7] = 0;
+		else
+			val[7] = data[x+6] * mask[1];
+
+		if (x+8 > size)
+			val[8] = 0;
+		else
+			val[8] = data[x+8] * mask[0];
+
+		float sum = 0;
+		for(int i=0;i<8;i++)
+			sum += val[i];
+
+		ndata[x] = (unsigned char) sum;
+	}
+
+	memcpy(data, ndata, sizeof(unsigned char)*size);
+}
+
+void _pinky_mod(unsigned char* data, uint64_t size)
+{
+	uint_fast64_t i = 0; // can't find difference between uint64 vs fast64
+	for (i=0; i < size; i++)
+	{
+		if (data[i] < 128)
+			data[i] *= 1.2;
+	}
+}
+
+void _pinky_mod_uv(unsigned char* data, uint64_t size)
+{
+	uint_fast64_t i = 0; // can't find difference between uint64 vs fast64
+	for (i=0; i < size; i++)
+	{
+		if (data[i] % 2 == 0)
+			data[i] *= 1.2;
+	}
+}
+
+void _camera_preview_callback(camera_preview_data_s *frame, void *data)
+{
+    if (frame->format == CAMERA_PIXEL_FORMAT_NV12 && frame->num_of_planes == 2)
+	{
+    	time_t sTime = clock();
+
+    	// frame->data.double_plane.y_size  : 921600
+    	// frame->data.double_plane.uv_size : 460800
+    	switch(cam_data.filter)
+    	{
+    	case 0: // original
+    		break;
+    	case 1: // sepia
+			_chroma_mod_sepia(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
+    		break;
+    	case 2: // grayscale
+    		_grayscale_mod(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
+			break;
+    	case 3: // invert
+    		_invert_mod(frame->data.double_plane.y, frame->data.double_plane.y_size + frame->data.double_plane.uv_size);
+    		break;
+    	case 4: // emboss
+    	    _emboss_mod(frame->data.double_plane.y, frame->data.double_plane.y_size);
+    	    //_emboss_mod_uv(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
+    	    break;
+    	case 5: // gaussian
+    		_gaussian_mod(frame->data.double_plane.y, frame->data.double_plane.y_size);
+    		//_gaussian_mod_uv(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
+    		break;
+    	case 6: // pinky
+    		_pinky_mod(frame->data.double_plane.y, frame->data.double_plane.y_size);
+    		_pinky_mod_uv(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
+    		break;
+    	default:
+    		break;
+    	}
+
+    	time_t eTime = clock();
+    	float gap = (float)(eTime-sTime)/(CLOCKS_PER_SEC);
+	}
+	else
+	{
+		dlog_print(DLOG_ERROR, LOG_TAG, "This preview frame format is not supported!");
+		PRINT_MSG("This preview frame format is not supported!");
+		//we do nothing, the preview is left intact and displayed without modifications
+	}
 }
 
 static void __camera_cb_filter(void *data, Evas_Object *obj, void *event_info)
@@ -560,7 +934,8 @@ static void __camera_cb_filter(void *data, Evas_Object *obj, void *event_info)
 	    }
 
 	    /* Set new value of the camera brightness attribute */
-	    filter = filter == max ? min : ++filter;
+
+	     filter = filter == max ? min : ++filter;
 	    error_code = camera_attr_set_filter(filter);
 	    if (CAMERA_ERROR_NONE != error_code) {
 	        if (CAMERA_ERROR_NOT_SUPPORTED != error_code) {
@@ -572,8 +947,12 @@ static void __camera_cb_filter(void *data, Evas_Object *obj, void *event_info)
 	    } else
 	        PRINT_MSG("Filter set to %d", filter);
 
-	    /* TODO: Apply filter to preview image */
 
+	    /* TODO: Apply filter to preview image */
+	    if (camera_set_preview_cb(cam_data.g_camera, _camera_preview_callback, NULL) == CAMERA_ERROR_NONE)
+	    {
+	    	PRINT_MSG("ready to modify");
+	    }
 }
 
 static int camera_attr_get_sticker_range(int* min,
@@ -719,17 +1098,20 @@ void create_buttons_in_main_window(void)
     /* Create buttons for the Camera. */
     cam_data.preview_bt = _new_button(cam_data.display, "Start preview",
             __camera_cb_preview);
+/*    (*
     cam_data.zoom_bt = _new_button(cam_data.display, "Zoom",
             __camera_cb_zoom);
     cam_data.brightness_bt = _new_button(cam_data.display, "Brightness",
             __camera_cb_bright);
+            */
     cam_data.filter_bt = _new_button(cam_data.display, "Filter",
     		__camera_cb_filter);
+    /*
     cam_data.sticker_bt = _new_button(cam_data.display, "Sticker",
     		__camera_cb_sticker);
     cam_data.photo_bt = _new_button(cam_data.display, "Take a photo",
             __camera_cb_photo);
-
+*/
     /*
      * Disable buttons different than "Start preview" when the preview is not
      * running.
@@ -817,6 +1199,10 @@ void create_buttons_in_main_window(void)
     } else
         PRINT_MSG("Camera resolution set to: %d %d", resolution[0],
                 resolution[1]);
+    cam_data.height = resolution[0];
+    cam_data.width = resolution[1];
+
+    camera_foreach_supported_preview_format(cam_data.g_camera, _supported_preview_format_cb, NULL);
 
     /* Set the capture format for the camera. */
     error_code = camera_set_capture_format(cam_data.g_camera,
