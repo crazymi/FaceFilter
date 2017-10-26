@@ -125,7 +125,7 @@ void *_create_new_cd_display(char *name, void *callback)
     /* Create a new item */
     Elm_Object_Item *item = elm_naviframe_item_push(s_info.navi, /*"Multimedia"*/NULL,
             NULL, NULL, scroller, NULL);
-    elm_object_item_part_text_set(item, "subtitle", name);
+   // elm_object_item_part_text_set(item, "subtitle", name);
 
 
     if (callback != NULL)
