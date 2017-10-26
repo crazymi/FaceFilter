@@ -115,33 +115,62 @@ static void _btn_clear_cb(void *data, Evas_Object *object, void *event_info)
  * @return A box object, which is an element of the newly created view. All new
  *         UI elements of this view are held in this container.
  */
-Evas_Object *_create_new_cd_display(char *name, void *callback)
+void *_create_new_cd_display(char *name, void *callback)
 {
-    /* Create a scroller */
+    /* Create a scroller
     Evas_Object *scroller = elm_scroller_add(s_info.win);
     evas_object_size_hint_weight_set(scroller, EVAS_HINT_EXPAND,
             EVAS_HINT_EXPAND);
-
+*/
     /* Create a new item */
-    Elm_Object_Item *item = elm_naviframe_item_push(s_info.navi, /*"Multimedia"*/NULL,
-            NULL, NULL, scroller, NULL);
+    //Elm_Object_Item *item = elm_naviframe_item_push(s_info.navi, /*"Multimedia"*/NULL,
+    //        NULL, NULL, scroller, NULL);
     //elm_object_item_part_text_set(item, "subtitle", name);
 
+	/*
     if (callback != NULL)
         elm_naviframe_item_pop_cb_set(item, (Elm_Naviframe_Item_Pop_Cb) callback,
                 NULL);
     else
         elm_naviframe_item_pop_cb_set(item, _pop_cb, NULL);
-
+*/
     /* Create main box */
-    Evas_Object *box = elm_box_add(scroller);
-    elm_object_content_set(scroller, box);
+    //Evas_Object *box = elm_box_add(scroller);
+    //elm_object_content_set(scroller, box);
+	Evas_Object *box = elm_box_add(s_info.win);
     elm_box_horizontal_set(box, EINA_FALSE);
     evas_object_size_hint_align_set(box, EVAS_HINT_FILL, EVAS_HINT_FILL);
     evas_object_size_hint_weight_set(box, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
     evas_object_show(box);
 
-    /* Create a box for adding content */
+    /* Create top button box */
+    Evas_Object *tbox = elm_box_add(box);
+    Evas_Coord padding_between_buttons = 3;
+    elm_box_padding_set(tbox, 0, padding_between_buttons);
+    elm_box_horizontal_set(tbox, EINA_TRUE);
+    evas_object_size_hint_align_set(tbox, EVAS_HINT_FILL, EVAS_HINT_FILL);
+    evas_object_size_hint_weight_set(tbox, EVAS_HINT_EXPAND, 0.1);
+    elm_box_pack_end(box, tbox);
+    evas_object_show(tbox);
+
+    /* Create preview box */
+    Evas_Object *mbox = elm_box_add(box);
+    elm_box_horizontal_set(mbox, EINA_FALSE);
+    evas_object_size_hint_align_set(mbox, EVAS_HINT_FILL, EVAS_HINT_FILL);
+    evas_object_size_hint_weight_set(mbox, EVAS_HINT_EXPAND, 0.8);
+    elm_box_pack_end(box, mbox);
+    evas_object_show(mbox);
+
+    /* Create bottom button box */
+    Evas_Object *bbox = elm_box_add(box);
+    elm_box_padding_set(bbox, 0, padding_between_buttons);
+    elm_box_horizontal_set(bbox, EINA_TRUE);
+    evas_object_size_hint_align_set(bbox, EVAS_HINT_FILL, EVAS_HINT_FILL);
+    evas_object_size_hint_weight_set(bbox, EVAS_HINT_EXPAND, 0.1);
+    elm_box_pack_end(box, bbox);
+    evas_object_show(bbox);
+
+    /* Create a box for adding content
     Evas_Object *bbox = elm_box_add(box);
     Evas_Coord padding_between_buttons = 3;
     elm_box_padding_set(bbox, 0, padding_between_buttons);
@@ -150,16 +179,16 @@ Evas_Object *_create_new_cd_display(char *name, void *callback)
     evas_object_size_hint_weight_set(bbox, EVAS_HINT_EXPAND, 0.0);
     elm_box_pack_end(box, bbox);
     evas_object_show(bbox);
-
-    /* Create a box for entry */
+*/
+    /* Create a box for entry
     Evas_Object *ebox = elm_box_add(box);
     elm_box_horizontal_set(ebox, EINA_FALSE);
     evas_object_size_hint_align_set(ebox, EVAS_HINT_FILL, EVAS_HINT_FILL);
     evas_object_size_hint_weight_set(ebox, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
     elm_box_pack_end(box, ebox);
     evas_object_show(ebox);
-
-    /* Create a message box */
+*/
+    /* Create a message box
     GLOBAL_DEBUG_BOX = elm_entry_add(ebox);
     elm_entry_editable_set(GLOBAL_DEBUG_BOX, EINA_FALSE);
     elm_entry_scrollable_set(GLOBAL_DEBUG_BOX, EINA_TRUE);
@@ -171,11 +200,17 @@ Evas_Object *_create_new_cd_display(char *name, void *callback)
             EVAS_HINT_EXPAND);
     elm_box_pack_end(ebox, GLOBAL_DEBUG_BOX);
     evas_object_show(GLOBAL_DEBUG_BOX);
-
+*/
     /* Create the "Clear" button */
-    _new_button(box, "Clear", _btn_clear_cb);
+   // _new_button(box, "Clear", _btn_clear_cb);
 
-    return bbox;
+    //return bbox;
+    struct tmp *buf = (struct tmp*)malloc(sizeof(struct tmp));
+    buf->tbox = tbox;
+    buf->mbox = mbox;
+    buf->bbox = bbox;
+
+    return buf;
 }
 
 /**

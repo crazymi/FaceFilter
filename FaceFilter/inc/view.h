@@ -22,6 +22,12 @@
 #include <efl_extension.h>
 #include <Elementary.h>
 
+struct tmp {
+	Evas_Object *tbox;
+	Evas_Object *mbox;
+	Evas_Object *bbox;
+};
+
 Eina_Bool view_create(void *user_data);
 Evas_Object *view_create_win(const char *pkg_name);
 Evas_Object *view_create_layout(Evas_Object *parent, const char *file_path, const char *group_name, Eext_Event_Cb cb_function, void *user_data);
@@ -36,6 +42,6 @@ void _add_entry_text(const char *text);
     snprintf(_log_, _PRINT_MSG_LOG_BUFFER_SIZE_, fmt, ##args); _add_entry_text(_log_); } while (0)
 
 Evas_Object *_new_button(Evas_Object *display, char *name, void *cb);
-Evas_Object *_create_new_cd_display(char *name, void *cb);
+void *_create_new_cd_display(char *name, void *cb);
 
 #endif

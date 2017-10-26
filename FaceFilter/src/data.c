@@ -1078,7 +1078,8 @@ void create_buttons_in_main_window(void)
      * Create the window with camera preview and buttons for manipulating the
      * camera and taking the photo.
      */
-    cam_data.display = _create_new_cd_display("Camera", NULL);
+    struct tmp *buf = _create_new_cd_display("Camera", NULL);
+    cam_data.cam_display = buf->mbox;
 
     /* Create a box for the camera preview. */
     cam_data.cam_display_box = elm_box_add(cam_data.display);
@@ -1096,22 +1097,19 @@ void create_buttons_in_main_window(void)
             EVAS_CALLBACK_RESIZE, _post_render_cb, &(cam_data.cam_display));
 
     /* Create buttons for the Camera. */
-    cam_data.preview_bt = _new_button(cam_data.display, "Start preview",
+    cam_data.preview_bt = _new_button(buf->tbox, "Start preview",
             __camera_cb_preview);
-/*    (*
-    cam_data.zoom_bt = _new_button(cam_data.display, "Zoom",
+    cam_data.zoom_bt = _new_button(buf->tbox, "Zoom",
             __camera_cb_zoom);
-    cam_data.brightness_bt = _new_button(cam_data.display, "Brightness",
+    cam_data.brightness_bt = _new_button(buf->tbox, "Brightness",
             __camera_cb_bright);
-            */
-    cam_data.filter_bt = _new_button(cam_data.display, "Filter",
+    cam_data.filter_bt = _new_button(buf->bbox, "Filter",
     		__camera_cb_filter);
-    /*
-    cam_data.sticker_bt = _new_button(cam_data.display, "Sticker",
+    cam_data.sticker_bt = _new_button(buf->bbox, "Sticker",
     		__camera_cb_sticker);
-    cam_data.photo_bt = _new_button(cam_data.display, "Take a photo",
+    cam_data.photo_bt = _new_button(buf->bbox, "Take a photo",
             __camera_cb_photo);
-*/
+
     /*
      * Disable buttons different than "Start preview" when the preview is not
      * running.
