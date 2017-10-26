@@ -19,6 +19,8 @@
 
 #include "view.h"
 
+#define MAX_FILTER 6
+
 void create_buttons_in_main_window(void);
 
 static int camera_attr_get_filter_range(int *min,
@@ -30,4 +32,6 @@ static int camera_attr_get_sticker_range(int* min,
         int* max);
 static int camera_attr_get_sticker(int* sticker);
 static int camera_attr_set_sticker(int sticker);
+
+
 #endif
