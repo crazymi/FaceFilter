@@ -641,7 +641,7 @@ void _emboss_mod(unsigned char* data, uint64_t size)
 			val[8] = data[x+w+1] * mask[0];
 
 		float sum = 0;
-		for(int i=0;i<8;i++)
+		for(int i=0;i<9;i++)
 			sum += val[i];
 
 		ndata[x] = (unsigned char) sum;
@@ -663,20 +663,20 @@ void _emboss_mod_uv(unsigned char* data, uint64_t size)
 	for(x=0; x<size; x++)
 	{
 		float val[9] = {0,};
-		if (x < 8)
+		if (x < w+2)
 			val[0] = 0;
 		else
-			val[0] = data[x-8] * mask[8];
+			val[0] = data[x-w-2] * mask[8];
 
-		if (x < 6)
+		if (x < w)
 			val[1] = 0;
 		else
-			val[1] = data[x-6] * mask[7];
+			val[1] = data[x-w] * mask[7];
 
-		if (x < 4)
+		if (x < w-2)
 			val[2] = 0;
 		else
-			val[2] = data[x-4] * mask[6];
+			val[2] = data[x-w+2] * mask[6];
 
 		if (x < 2)
 			val[3] = 0;
@@ -690,23 +690,23 @@ void _emboss_mod_uv(unsigned char* data, uint64_t size)
 		else
 			val[5] = data[x+2] * mask[3];
 
-		if (x+4 > size)
+		if (x+w-2 > size)
 			val[6] = 0;
 		else
-			val[6] = data[x+4] * mask[2];
+			val[6] = data[x+w-2] * mask[2];
 
-		if (x+6 > size)
+		if (x+w > size)
 			val[7] = 0;
 		else
-			val[7] = data[x+6] * mask[1];
+			val[7] = data[x+w] * mask[1];
 
-		if (x+8 > size)
+		if (x+w+2 > size)
 			val[8] = 0;
 		else
-			val[8] = data[x+8] * mask[0];
+			val[8] = data[x+w+2] * mask[0];
 
 		float sum = 0;
-		for(int i=0;i<8;i++)
+		for(int i=0;i<9;i++)
 			sum += val[i];
 
 		ndata[x] = (unsigned char) sum;
@@ -885,11 +885,11 @@ void _camera_preview_callback(camera_preview_data_s *frame, void *data)
     		_invert_mod(frame->data.double_plane.y, frame->data.double_plane.y_size + frame->data.double_plane.uv_size);
     		break;
     	case 4: // emboss
-    	    _emboss_mod(frame->data.double_plane.y, frame->data.double_plane.y_size);
-    	    //_emboss_mod_uv(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
+//    	    _emboss_mod(frame->data.double_plane.y, frame->data.double_plane.y_size);
+    	    _emboss_mod_uv(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
     	    break;
     	case 5: // gaussian
-    		_gaussian_mod(frame->data.double_plane.y, frame->data.double_plane.y_size);
+    		//_gaussian_mod(frame->data.double_plane.y, frame->data.double_plane.y_size);
     		//_gaussian_mod_uv(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
     		break;
     	case 6: // pinky
