@@ -61,6 +61,8 @@
 using namespace dlib;
 using namespace std;
 
+template <typename image_type>
+void sticker_mustache(const image_type& in_img, image_type& out_img, const dpoint& center_point ,int idx);
 // ----------------------------------------------------------------------------------------
 
 int main(int argc, char** argv)
@@ -95,6 +97,7 @@ int main(int argc, char** argv)
 
         image_window win, win_faces;
 
+        // write position of landmarks
         ofstream outFile("result.txt");
         // Loop over all the images provided on the command line.
         // process only one
@@ -111,6 +114,8 @@ int main(int argc, char** argv)
             // Now tell the face detector to give us a list of bounding boxes
             // around all the faces in the image.
             begin = clock();
+            // reference about speed up : https://github.com/davisking/dlib/issues/557
+            // https://www.learnopencv.com/speeding-up-dlib-facial-landmark-detector/
             std::vector<rectangle> dets = detector(img);
             cout << ">>>frontal face detector: " << (double)(clock() - begin) / CLOCKS_PER_SEC << endl;
             cout << "Number of faces detected: " << dets.size() << endl;
@@ -126,29 +131,13 @@ int main(int argc, char** argv)
                 cout << "number of parts: "<< shape.num_parts() << endl;               
 
 
-                if(false){
+                // mustache filter
+                if(true){
                     array2d<rgb_pixel> img_origin;
                     assign_image(img_origin, img);
                     
                     for(int idx=0;idx<4;idx++){
-                        std::string fname = "img/mustache_";
-                        array2d<rgb_alpha_pixel> stst;
-                        load_image(stst, fname + to_string(idx) + ".png");
-                        int p = (int)(shape.part(30))(0);
-                        int q = (int)(shape.part(30))(1);
-                        cout << "coord : " << shape.part(30) << endl;
-                        int sw = (int)stst.nr()/2;
-                        int sh = (int)stst.nc()/2;
-        
-                        for(int x=-sw;x<sw;x++){
-                        for(int y=-sh;y<sh;y++){
-                            if(stst[x+sw][y+sh].alpha != 0){
-                                img[x+q][y+p].red = stst[x+sw][y+sh].red;
-                                img[x+q][y+p].blue = stst[x+sw][y+sh].blue;
-                                img[x+q][y+p].green = stst[x+sw][y+sh].green;
-                            }
-                        }
-                        }
+                        sticker_mustache(img_origin, img, shape.part(30), idx);
 
                         save_png(img, "img/result_" + to_string(idx) + ".png");
                         assign_image(img, img_origin);
@@ -193,6 +182,8 @@ int main(int argc, char** argv)
                 */
 
                 draw_rectangle(img, shape.get_rect(), rgb_pixel(255, 255 ,255));
+                int face_width = (int) (shape.get_rect().right() - shape.get_rect().left());
+                int face_height = (int) (shape.get_rect().top() - shape.get_rect().bottom());
 
                 cout << "top :" << shape.get_rect().top() << endl;
                 cout << "left :" << shape.get_rect().left() << endl;
@@ -226,6 +217,38 @@ int main(int argc, char** argv)
         }
     }
     catch (exception& e)
+    {
+        cout << "\nexception thrown!" << endl;
+        cout << e.what() << endl;
+    }
+}
+
+template <typename image_type>
+void sticker_mustache(const image_type& in_img, image_type& out_img, const dpoint& center_point ,int idx){
+    try{
+        assign_image(out_img, in_img);
+        
+        string fname = "img/mustache_";
+        array2d<rgb_alpha_pixel> stst;
+        load_image(stst, fname + to_string(idx) + ".png");
+
+        int p = (int)center_point(0);
+        int q = (int)center_point(1);
+        cout << "coord : " << center_point << endl;
+        int sw = (int)stst.nr()/2;
+        int sh = (int)stst.nc()/2;
+
+        for(int x=-sw;x<sw;x++){
+            for(int y=-sh;y<sh;y++){
+                if(stst[x+sw][y+sh].alpha != 0){
+                    out_img[x+q][y+p].red = stst[x+sw][y+sh].red;
+                    out_img[x+q][y+p].blue = stst[x+sw][y+sh].blue;
+                    out_img[x+q][y+p].green = stst[x+sw][y+sh].green;
+                }
+            }
+        }
+    }
+    catch (exception &e)
     {
         cout << "\nexception thrown!" << endl;
         cout << e.what() << endl;
