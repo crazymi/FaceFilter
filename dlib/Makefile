@@ -15,4 +15,4 @@ run:
 	./$(RES) $(DAT) face.jpg
 
 clean :
-	rm -f $(RES) result.png
+	rm -f $(RES) result.png result.txt

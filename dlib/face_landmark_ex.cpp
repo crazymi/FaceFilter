@@ -56,6 +56,7 @@
 #include <dlib/image_io.h>
 #include <ctime>
 #include <iostream>
+#include <fstream>
 
 using namespace dlib;
 using namespace std;
@@ -93,21 +94,25 @@ int main(int argc, char** argv)
         cout << ">>>deserialize: " << (double)(clock() - begin) / CLOCKS_PER_SEC << endl;
 
         image_window win, win_faces;
+
+        ofstream outFile("result.txt");
         // Loop over all the images provided on the command line.
-        for (int i = 2; i < argc; ++i)
+        // process only one
+        for (int i = 2; i < 3; ++i)
         {
             cout << "processing image " << argv[i] << endl;
             array2d<rgb_pixel> img;
             load_image(img, argv[i]);
 
             // Make the image larger so we can detect small faces.
+            // @@@Modified -> maybe no need, due to type of img is selfie
             // pyramid_up(img);
 
             // Now tell the face detector to give us a list of bounding boxes
             // around all the faces in the image.
             begin = clock();
             std::vector<rectangle> dets = detector(img);
-            cout << ">>>face detector: " << (double)(clock() - begin) / CLOCKS_PER_SEC << endl;
+            cout << ">>>frontal face detector: " << (double)(clock() - begin) / CLOCKS_PER_SEC << endl;
             cout << "Number of faces detected: " << dets.size() << endl;
 
             // Now we will go ask the shape_predictor to tell us the pose of
@@ -117,20 +122,12 @@ int main(int argc, char** argv)
             {
                 begin = clock();
                 full_object_detection shape = sp(img, dets[j]);
-                cout << ">>>face detector: " << (double)(clock() - begin) / CLOCKS_PER_SEC << endl;
-                cout << "number of parts: "<< shape.num_parts() << endl;
-                
-                dlib::vector<long int, 2l> test = dlib::vector<long int, 2l>(10,50);
-                cout << "test part:  " << test(0) << endl;
-                // cout << "x: " << shape.part(0).x << endl;
-                //cout << "y: " << shape.part(0)[1] << endl;
-                
-                cout << "pixel position of first part:  " << shape.part(0) << endl;
-                cout << "pixel position of second part: " << shape.part(1) << endl;
+                cout << ">>>shape predictor: " << (double)(clock() - begin) / CLOCKS_PER_SEC << endl;
+                cout << "number of parts: "<< shape.num_parts() << endl;               
 
                 
-
                 for(int j=0;j<shape.num_parts();j++){
+                    outFile << j << ": " <<  shape.part(j) << endl;
                     if (j>=0 && j<=16){ // ear to ear
                         draw_solid_circle(img, shape.part(j), (double)5, rgb_pixel(255,0,0));
                     } else if (j>=27 && j<=30){ // line on top of nose
@@ -159,12 +156,22 @@ int main(int argc, char** argv)
                 // put them on the screen.
                 shapes.push_back(shape);
 
-                rectangle rect;
+                /*
+                dlib::vector<long int, 2l> top_left = dlib::vector<long int, 2l>(shape.get_rect().top(), shape.get_rect().left());
+                dlib::vector<long int, 2l> bottom_right = dlib::vector<long int, 2l>(shape.get_rect().bottom(), shape.get_rect().right());
+                draw_solid_circle(img, top_left, (double)5, rgb_pixel(255,255,255));
+                draw_solid_circle(img, bottom_right, (double)5, rgb_pixel(255,255,255));
+                */
+
+                draw_rectangle(img, shape.get_rect(), rgb_pixel(255, 255 ,255));
+
                 cout << "top :" << shape.get_rect().top() << endl;
                 cout << "left :" << shape.get_rect().left() << endl;
                 cout << "bottom :" << shape.get_rect().bottom() << endl;
                 cout << "right :" << shape.get_rect().right() << endl;
+                
             }
+            
 
             /*
             full_object_detection shape = sp(img, dets[0]);
@@ -193,6 +200,7 @@ int main(int argc, char** argv)
             win.add_overlay(render_face_detections(shapes));
             */
 
+            outFile.close();
             save_png(img, "result.png");
 
             // We can also extract copies of each face that are cropped, rotated upright,
