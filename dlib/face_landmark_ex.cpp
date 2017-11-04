@@ -54,6 +54,7 @@
 #include <dlib/image_transforms.h>
 #include <dlib/gui_widgets.h>
 #include <dlib/image_io.h>
+#include <ctime>
 #include <iostream>
 
 using namespace dlib;
@@ -86,7 +87,10 @@ int main(int argc, char** argv)
         // loading the model from the shape_predictor_68_face_landmarks.dat file you gave
         // as a command line argument.
         shape_predictor sp;
+
+        clock_t begin = clock();
         deserialize(argv[1]) >> sp;
+        cout << ">>>deserialize: " << (double)(clock() - begin) / CLOCKS_PER_SEC << endl;
 
         image_window win, win_faces;
         // Loop over all the images provided on the command line.
@@ -95,12 +99,15 @@ int main(int argc, char** argv)
             cout << "processing image " << argv[i] << endl;
             array2d<rgb_pixel> img;
             load_image(img, argv[i]);
+
             // Make the image larger so we can detect small faces.
-            pyramid_up(img);
+            // pyramid_up(img);
 
             // Now tell the face detector to give us a list of bounding boxes
             // around all the faces in the image.
+            begin = clock();
             std::vector<rectangle> dets = detector(img);
+            cout << ">>>face detector: " << (double)(clock() - begin) / CLOCKS_PER_SEC << endl;
             cout << "Number of faces detected: " << dets.size() << endl;
 
             // Now we will go ask the shape_predictor to tell us the pose of
@@ -108,7 +115,9 @@ int main(int argc, char** argv)
             std::vector<full_object_detection> shapes;
             for (unsigned long j = 0; j < dets.size(); ++j)
             {
+                begin = clock();
                 full_object_detection shape = sp(img, dets[j]);
+                cout << ">>>face detector: " << (double)(clock() - begin) / CLOCKS_PER_SEC << endl;
                 cout << "number of parts: "<< shape.num_parts() << endl;
                 
                 dlib::vector<long int, 2l> test = dlib::vector<long int, 2l>(10,50);
