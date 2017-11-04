@@ -125,6 +125,35 @@ int main(int argc, char** argv)
                 cout << ">>>shape predictor: " << (double)(clock() - begin) / CLOCKS_PER_SEC << endl;
                 cout << "number of parts: "<< shape.num_parts() << endl;               
 
+
+                if(false){
+                    array2d<rgb_pixel> img_origin;
+                    assign_image(img_origin, img);
+                    
+                    for(int idx=0;idx<4;idx++){
+                        std::string fname = "img/mustache_";
+                        array2d<rgb_alpha_pixel> stst;
+                        load_image(stst, fname + to_string(idx) + ".png");
+                        int p = (int)(shape.part(30))(0);
+                        int q = (int)(shape.part(30))(1);
+                        cout << "coord : " << shape.part(30) << endl;
+                        int sw = (int)stst.nr()/2;
+                        int sh = (int)stst.nc()/2;
+        
+                        for(int x=-sw;x<sw;x++){
+                        for(int y=-sh;y<sh;y++){
+                            if(stst[x+sw][y+sh].alpha != 0){
+                                img[x+q][y+p].red = stst[x+sw][y+sh].red;
+                                img[x+q][y+p].blue = stst[x+sw][y+sh].blue;
+                                img[x+q][y+p].green = stst[x+sw][y+sh].green;
+                            }
+                        }
+                        }
+
+                        save_png(img, "img/result_" + to_string(idx) + ".png");
+                        assign_image(img, img_origin);
+                    }
+                }
                 
                 for(int j=0;j<shape.num_parts();j++){
                     outFile << j << ": " <<  shape.part(j) << endl;
@@ -169,27 +198,8 @@ int main(int argc, char** argv)
                 cout << "left :" << shape.get_rect().left() << endl;
                 cout << "bottom :" << shape.get_rect().bottom() << endl;
                 cout << "right :" << shape.get_rect().right() << endl;
-                
             }
             
-
-            /*
-            full_object_detection shape = sp(img, dets[0]);
-            array2d<rgb_pixel> stst;
-            load_image(stst, "stst.png");
-            
-            int p = (int)(shape.part(28))(0);
-            int q = (int)(shape.part(28))(1);
-            cout << "coord : " << shape.part(28) << endl;
-
-            for(int i=0;i<stst.nc();i++){
-                for(int j=0;j<stst.nr();j++){
-                    //if((int) stst[i][j].alpha != 0){
-                        img[i+q][j+p] = stst[i][j];
-                    //}
-                }
-            }
-            */
             
 
             /*
