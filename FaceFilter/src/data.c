@@ -20,6 +20,9 @@
 #include <unistd.h>
 #include <camera.h>
 #include <storage.h>
+#include <muse.h>
+#include <muse_camera.h>
+#include <muse_core.h>
 
 #define BUFLEN 512
 
@@ -56,6 +59,7 @@ static char *camera_directory = NULL;
  */
 static const char *_camera_state_to_string(camera_state_e state)
 {
+
     switch (state) {
     case CAMERA_STATE_NONE:
         return "CAMERA_STATE_NONE";
@@ -152,7 +156,7 @@ static bool _preview_resolution_cb(int width, int height, void *user_data)
 
 static bool _supported_preview_format_cb(camera_pixel_format_e format, void *user_data)
 {
-	PRINT_MSG("supported: %d", format);
+	dlog_print(DLOG_DEBUG, LOG_TAG, "%d", format);
 }
 
 static void _camera_completed_cb(void *user_data)
@@ -584,6 +588,26 @@ void _invert_mod(unsigned char* data, uint64_t size)
 	}
 }
 
+void _nored_mod(unsigned char* data, uint64_t size)
+{
+	uint_fast64_t i = 0; // can't find difference between uint64 vs fast64
+	for (i=0; i < size; i++)
+	{
+		if(i%2 == 1)
+			data[i] = 128;
+	}
+}
+
+void _noblue_mod(unsigned char* data, uint64_t size)
+{
+	uint_fast64_t i = 0; // can't find difference between uint64 vs fast64
+	for (i=0; i < size; i++)
+	{
+		if(i%2 == 0)
+			data[i] = 128;
+	}
+}
+
 void _emboss_mod(unsigned char* data, uint64_t size)
 {
 	uint64_t x =0;
@@ -871,9 +895,14 @@ void _camera_preview_callback(camera_preview_data_s *frame, void *data)
 
     	// frame->data.double_plane.y_size  : 921600
     	// frame->data.double_plane.uv_size : 460800
+    	camera_attr_set_effect(cam_data.g_camera, cam_data.filter);
+    	dlog_print(DLOG_DEBUG, "hello", "%d", cam_data.filter);
+
+    	/*
     	switch(cam_data.filter)
     	{
     	case 0: // original
+    		camera_attr_set_effect(cam_data.g_camera, CAMERA_ATTR_EFFECT_NEGATIVE);
     		break;
     	case 1: // sepia
 			_chroma_mod_sepia(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
@@ -896,9 +925,16 @@ void _camera_preview_callback(camera_preview_data_s *frame, void *data)
     		_pinky_mod(frame->data.double_plane.y, frame->data.double_plane.y_size);
     		_pinky_mod_uv(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
     		break;
+    	case 7: // nored
+    	    _nored_mod(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
+    	    break;
+    	case 8: // noblue
+    	    _noblue_mod(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
+    	    break;
     	default:
     		break;
     	}
+    	*/
 
     	time_t eTime = clock();
     	float gap = (float)(eTime-sTime)/(CLOCKS_PER_SEC);
