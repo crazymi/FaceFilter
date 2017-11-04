@@ -3,6 +3,18 @@ http://www.stardailynews.co.kr/news/photo/201605/97763_119354_614.jpg
 Sample sticker image from  
 https://vignette.wikia.nocookie.net/simpsons/images/1/12/Lisa_Simpson-0.png/revision/latest?cb=20161027220133  
 
+## Using Make  
+```bash  
+make download  
+make  
+make run  
+make clean  
+```  
+
+
+
+## Without Make
+
 ### Compile  
 ```bash  
 g++ face_landmark_ex.cpp -o test -std=c++11 -ldlib -lcblas -llapack
