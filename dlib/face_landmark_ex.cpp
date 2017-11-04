@@ -63,6 +63,9 @@ using namespace std;
 
 template <typename image_type>
 void sticker_mustache(const image_type& in_img, image_type& out_img, const dpoint& center_point ,int idx);
+
+template <typename image_type>
+void sticker_hairband(const image_type& in_img, image_type& out_img, const full_object_detection& shape ,int idx);
 // ----------------------------------------------------------------------------------------
 
 int main(int argc, char** argv)
@@ -132,7 +135,7 @@ int main(int argc, char** argv)
 
 
                 // mustache filter
-                if(true){
+                if(false){
                     array2d<rgb_pixel> img_origin;
                     assign_image(img_origin, img);
                     
@@ -143,7 +146,21 @@ int main(int argc, char** argv)
                         assign_image(img, img_origin);
                     }
                 }
-                
+
+                // hairband filter
+                if(true){
+                    array2d<rgb_pixel> img_origin;
+                    assign_image(img_origin, img);
+                    
+                    for(int idx=0;idx<2;idx++){
+                        sticker_hairband(img_origin, img, shape, idx);
+
+                        save_png(img, "img/result_" + to_string(idx) + ".png");
+                        assign_image(img, img_origin);
+                    }
+                }
+
+                /*
                 for(int j=0;j<shape.num_parts();j++){
                     outFile << j << ": " <<  shape.part(j) << endl;
                     if (j>=0 && j<=16){ // ear to ear
@@ -168,6 +185,7 @@ int main(int argc, char** argv)
                         draw_solid_circle(img, shape.part(j), (double)5, rgb_pixel(0,0,0));
                     }
                 }
+                */
                 
                 // You get the idea, you can get all the face part locations if
                 // you want them.  Here we just store them in shapes so we can
@@ -189,10 +207,16 @@ int main(int argc, char** argv)
                 cout << "left :" << shape.get_rect().left() << endl;
                 cout << "bottom :" << shape.get_rect().bottom() << endl;
                 cout << "right :" << shape.get_rect().right() << endl;
+
+                /* find forehead
+                draw_solid_circle(img, shape.part(21), (double)10, rgb_pixel(255,0,0));
+                draw_solid_circle(img, shape.part(22), (double)10, rgb_pixel(0,255,0));
+                draw_solid_circle(img, shape.part(33), (double)10, rgb_pixel(0,0,255));
+                draw_solid_circle(img, fore_l, (double)30, rgb_pixel(255,255,0));
+                draw_solid_circle(img, fore_r, (double)30, rgb_pixel(255,255,0));
+                */
             }
             
-            
-
             /*
             // Now let's view our face poses on the screen.
             win.clear_overlay();
@@ -217,6 +241,70 @@ int main(int argc, char** argv)
         }
     }
     catch (exception& e)
+    {
+        cout << "\nexception thrown!" << endl;
+        cout << e.what() << endl;
+    }
+}
+
+template <typename image_type>
+void sticker_hairband(const image_type& in_img, image_type& out_img, const full_object_detection& shape ,int idx){
+    try{
+        assign_image(out_img, in_img);
+
+        long h = ((shape.part(21)+shape.part(22)) - shape.part(33))(1);
+
+        // get position of top of forehead
+        dlib::vector<long int, 2l> fore_l = dlib::vector<long int, 2l>((shape.part(19))(0), h);
+
+        dlib::vector<long int, 2l> fore_r = dlib::vector<long int, 2l>((shape.part(24))(0), h);
+        
+        // load hairband image
+        string fname = "img/hairband_";
+        array2d<rgb_alpha_pixel> st;
+        load_image(st, fname + to_string(idx) + "l.png");
+
+        // resize sticker image
+        int nw = (int)((float)h/st.nr() * st.nc());
+        array2d<rgb_alpha_pixel> stst(h, nw);
+        resize_image(st, stst);
+
+        // processing at left side
+        int p = (int)fore_l(0);
+        int q = (int)fore_l(1);
+        int sw = (int)stst.nr()/2;
+        int sh = (int)stst.nc()/2;
+
+        for(int x=-sw;x<sw;x++){
+            for(int y=-sh;y<sh;y++){
+                if(stst[x+sw][y+sh].alpha != 0){
+                    out_img[x+q][y+p].red = stst[x+sw][y+sh].red;
+                    out_img[x+q][y+p].blue = stst[x+sw][y+sh].blue;
+                    out_img[x+q][y+p].green = stst[x+sw][y+sh].green;
+                }
+            }
+        }
+        
+        // processing at right side
+        load_image(st, fname + to_string(idx) + "r.png");
+        nw = (int)((float)h/st.nr() * st.nc());
+        array2d<rgb_alpha_pixel> ststn(h, nw);
+        resize_image(st, ststn);
+
+        p = (int)fore_r(0);
+        q = (int)fore_r(1);
+
+        for(int x=-sw;x<sw;x++){
+            for(int y=-sh;y<sh;y++){
+                if(ststn[x+sw][y+sh].alpha != 0){
+                    out_img[x+q][y+p].red = ststn[x+sw][y+sh].red;
+                    out_img[x+q][y+p].blue = ststn[x+sw][y+sh].blue;
+                    out_img[x+q][y+p].green = ststn[x+sw][y+sh].green;
+                }
+            }
+        }
+    }
+    catch (exception &e)
     {
         cout << "\nexception thrown!" << endl;
         cout << e.what() << endl;

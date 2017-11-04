@@ -4,7 +4,7 @@ Sample sticker image from
 https://vignette.wikia.nocookie.net/simpsons/images/1/12/Lisa_Simpson-0.png/revision/latest?cb=20161027220133  
 
 Result img  
-![Alt text](/dlib/result.png)  
+![Alt text](/dlib/readme.png)  
 
 ## Using Make  
 ```bash  
