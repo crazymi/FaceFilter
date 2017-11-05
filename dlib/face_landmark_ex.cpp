@@ -62,7 +62,10 @@ using namespace dlib;
 using namespace std;
 
 template <typename image_type>
-void sticker_mustache(const image_type& in_img, image_type& out_img, const dpoint& center_point ,int idx);
+void landmark_draw(const image_type& in_img, image_type& out_img, const full_object_detection& shape);
+
+template <typename image_type>
+void sticker_mustache(const image_type& in_img, image_type& out_img, const full_object_detection& shape ,int idx);
 
 template <typename image_type>
 void sticker_hairband(const image_type& in_img, image_type& out_img, const full_object_detection& shape ,int idx);
@@ -133,16 +136,25 @@ int main(int argc, char** argv)
                 cout << ">>>shape predictor: " << (double)(clock() - begin) / CLOCKS_PER_SEC << endl;
                 cout << "number of parts: "<< shape.num_parts() << endl;               
 
+                // find landmark
+                if(true){
+                    array2d<rgb_pixel> img_landmark;
+                    landmark_draw(img, img_landmark, shape);
+                    for(int j=0;j<shape.num_parts();j++){
+                        outFile << j << ": " <<  shape.part(j) << endl;
+                    }
+                    save_png(img_landmark, "readme.png");
+                }
 
                 // mustache filter
-                if(false){
+                if(true){
                     array2d<rgb_pixel> img_origin;
                     assign_image(img_origin, img);
                     
                     for(int idx=0;idx<4;idx++){
-                        sticker_mustache(img_origin, img, shape.part(30), idx);
+                        sticker_mustache(img_origin, img, shape, idx);
 
-                        save_png(img, "img/result_" + to_string(idx) + ".png");
+                        save_png(img, "img/result_m" + to_string(idx) + ".png");
                         assign_image(img, img_origin);
                     }
                 }
@@ -155,78 +167,25 @@ int main(int argc, char** argv)
                     for(int idx=0;idx<2;idx++){
                         sticker_hairband(img_origin, img, shape, idx);
 
-                        save_png(img, "img/result_" + to_string(idx) + ".png");
+                        save_png(img, "img/result_h" + to_string(idx) + ".png");
                         assign_image(img, img_origin);
                     }
                 }
 
-                /*
-                for(int j=0;j<shape.num_parts();j++){
-                    outFile << j << ": " <<  shape.part(j) << endl;
-                    if (j>=0 && j<=16){ // ear to ear
-                        draw_solid_circle(img, shape.part(j), (double)5, rgb_pixel(255,0,0));
-                    } else if (j>=27 && j<=30){ // line on top of nose
-                        draw_solid_circle(img, shape.part(j), (double)5, rgb_pixel(127,0,0));
-                    } else if (j>=17 && j<=21){ // left eyebrow
-                        draw_solid_circle(img, shape.part(j), (double)5, rgb_pixel(0,255,0));
-                    } else if (j>=22 && j<=26){ // right eyebrow
-                        draw_solid_circle(img, shape.part(j), (double)5, rgb_pixel(0,127,0));
-                    } else if (j>=31 && j<=35){ // bottom part of the nose
-                        draw_solid_circle(img, shape.part(j), (double)5, rgb_pixel(0,0,255));
-                    } else if (j>=36 && j<=41){ // left eye
-                        draw_solid_circle(img, shape.part(j), (double)5, rgb_pixel(0,0,127));
-                    } else if (j>=42 && j<=47){ // right eye
-                        draw_solid_circle(img, shape.part(j), (double)5, rgb_pixel(255,255,0));
-                    } else if (j>=48 && j<=59){ // lips outer part
-                        draw_solid_circle(img, shape.part(j), (double)5, rgb_pixel(0,255,255));
-                    } else if (j>=60 && j<=67){ // lips inside part
-                        draw_solid_circle(img, shape.part(j), (double)5, rgb_pixel(255,0,255));
-                    } else {
-                        draw_solid_circle(img, shape.part(j), (double)5, rgb_pixel(0,0,0));
-                    }
-                }
-                */
-                
                 // You get the idea, you can get all the face part locations if
                 // you want them.  Here we just store them in shapes so we can
                 // put them on the screen.
                 shapes.push_back(shape);
-
-                /*
-                dlib::vector<long int, 2l> top_left = dlib::vector<long int, 2l>(shape.get_rect().top(), shape.get_rect().left());
-                dlib::vector<long int, 2l> bottom_right = dlib::vector<long int, 2l>(shape.get_rect().bottom(), shape.get_rect().right());
-                draw_solid_circle(img, top_left, (double)5, rgb_pixel(255,255,255));
-                draw_solid_circle(img, bottom_right, (double)5, rgb_pixel(255,255,255));
-                */
-
-                draw_rectangle(img, shape.get_rect(), rgb_pixel(255, 255 ,255));
-                int face_width = (int) (shape.get_rect().right() - shape.get_rect().left());
-                int face_height = (int) (shape.get_rect().top() - shape.get_rect().bottom());
-
-                cout << "top :" << shape.get_rect().top() << endl;
-                cout << "left :" << shape.get_rect().left() << endl;
-                cout << "bottom :" << shape.get_rect().bottom() << endl;
-                cout << "right :" << shape.get_rect().right() << endl;
-
-                /* find forehead
-                draw_solid_circle(img, shape.part(21), (double)10, rgb_pixel(255,0,0));
-                draw_solid_circle(img, shape.part(22), (double)10, rgb_pixel(0,255,0));
-                draw_solid_circle(img, shape.part(33), (double)10, rgb_pixel(0,0,255));
-                draw_solid_circle(img, fore_l, (double)30, rgb_pixel(255,255,0));
-                draw_solid_circle(img, fore_r, (double)30, rgb_pixel(255,255,0));
-                */
             }
             
             /*
             // Now let's view our face poses on the screen.
             win.clear_overlay();
             win.set_image(img);
-//            win.add_overlay(image_display::overlay_circle(shape.part(0), 5, rgb_pixel(0, 255 ,0)));
             win.add_overlay(render_face_detections(shapes));
             */
 
-            outFile.close();
-            save_png(img, "result.png");
+            // save_png(img, "result.png");
 
             // We can also extract copies of each face that are cropped, rotated upright,
             // and scaled to a standard size as shown here:
@@ -239,12 +198,53 @@ int main(int argc, char** argv)
             cout << "Hit enter to process the next image..." << endl;
             cin.get();
         }
+
+        outFile.close();
     }
     catch (exception& e)
     {
         cout << "\nexception thrown!" << endl;
         cout << e.what() << endl;
     }
+}
+
+template <typename image_type>
+void landmark_draw(const image_type& in_img, image_type& out_img, const full_object_detection& shape){
+    assign_image(out_img, in_img);
+
+    for(int j=0;j<shape.num_parts();j++){
+        if (j>=0 && j<=16){ // ear to ear
+            draw_solid_circle(out_img, shape.part(j), (double)5, rgb_pixel(255,0,0));
+        } else if (j>=27 && j<=30){ // line on top of nose
+            draw_solid_circle(out_img, shape.part(j), (double)5, rgb_pixel(127,0,0));
+        } else if (j>=17 && j<=21){ // left eyebrow
+            draw_solid_circle(out_img, shape.part(j), (double)5, rgb_pixel(0,255,0));
+        } else if (j>=22 && j<=26){ // right eyebrow
+            draw_solid_circle(out_img, shape.part(j), (double)5, rgb_pixel(0,127,0));
+        } else if (j>=31 && j<=35){ // bottom part of the nose
+            draw_solid_circle(out_img, shape.part(j), (double)5, rgb_pixel(0,0,255));
+        } else if (j>=36 && j<=41){ // left eye
+            draw_solid_circle(out_img, shape.part(j), (double)5, rgb_pixel(0,0,127));
+        } else if (j>=42 && j<=47){ // right eye
+            draw_solid_circle(out_img, shape.part(j), (double)5, rgb_pixel(255,255,0));
+        } else if (j>=48 && j<=59){ // lips outer part
+            draw_solid_circle(out_img, shape.part(j), (double)5, rgb_pixel(0,255,255));
+        } else if (j>=60 && j<=67){ // lips inside part
+            draw_solid_circle(out_img, shape.part(j), (double)5, rgb_pixel(255,0,255));
+        } else {
+            draw_solid_circle(out_img, shape.part(j), (double)5, rgb_pixel(0,0,0));
+        }
+    }
+
+    draw_rectangle(out_img, shape.get_rect(), rgb_pixel(255, 255 ,255));
+
+    int face_width = (int) (shape.get_rect().right() - shape.get_rect().left());
+    int face_height = (int) (shape.get_rect().top() - shape.get_rect().bottom());
+
+    cout << "top :" << shape.get_rect().top() << endl;
+    cout << "left :" << shape.get_rect().left() << endl;
+    cout << "bottom :" << shape.get_rect().bottom() << endl;
+    cout << "right :" << shape.get_rect().right() << endl;
 }
 
 template <typename image_type>
@@ -312,17 +312,22 @@ void sticker_hairband(const image_type& in_img, image_type& out_img, const full_
 }
 
 template <typename image_type>
-void sticker_mustache(const image_type& in_img, image_type& out_img, const dpoint& center_point ,int idx){
+void sticker_mustache(const image_type& in_img, image_type& out_img, const full_object_detection& shape ,int idx){
     try{
         assign_image(out_img, in_img);
         
         string fname = "img/mustache_";
-        array2d<rgb_alpha_pixel> stst;
-        load_image(stst, fname + to_string(idx) + ".png");
+        array2d<rgb_alpha_pixel> st;
+        load_image(st, fname + to_string(idx) + ".png");
 
-        int p = (int)center_point(0);
-        int q = (int)center_point(1);
-        cout << "coord : " << center_point << endl;
+        // resize sticker image
+        long w = (int) (shape.get_rect().right() - shape.get_rect().left());
+        int nh = (int)((float)w/st.nc() * st.nr());
+        array2d<rgb_alpha_pixel> stst(nh, w);
+        resize_image(st, stst);
+
+        int p = (int)(shape.part(30))(0);
+        int q = (int)(shape.part(30))(1);
         int sw = (int)stst.nr()/2;
         int sh = (int)stst.nc()/2;
 
