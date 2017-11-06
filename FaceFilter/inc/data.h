@@ -19,7 +19,7 @@
 
 #include "view.h"
 
-#define MAX_FILTER 6
+#define MAX_FILTER 30
 
 void create_buttons_in_main_window(void);
 

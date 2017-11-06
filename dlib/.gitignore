@@ -1,0 +1,6 @@
+*.bz2
+*.dat
+test
+/img
+result*
+.vscode/
