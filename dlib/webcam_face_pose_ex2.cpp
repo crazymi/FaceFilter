@@ -40,6 +40,7 @@ using namespace dlib;
 using namespace std;
 
 cv_image<bgr_pixel> cimg;
+//array2d<rgb_pixel> cimg;
 array2d<rgb_alpha_pixel> origin_img;
 array2d<rgb_alpha_pixel> resize_img;
 std::vector<rectangle> faces;
@@ -99,7 +100,8 @@ int main(int argc, char** argv)
             //cv_image<bgr_pixel> cimg(temp);
             cimg = temp;
 
-            // Detect faces 
+            // Detect faces
+            //load_image(cimg, "a.jpg"); 
             faces = detector(cimg);
 
             // Find the pose of each face.
@@ -169,16 +171,6 @@ void stick_mustache(full_object_detection shape)
             cimg[i-resize_img.nc()/2 + shape.part(33)(1)][j-resize_img.nr()/2 + shape.part(33)(0)].red = resize_img[i][j].red;
             cimg[i-resize_img.nc()/2 + shape.part(33)(1)][j-resize_img.nr()/2 + shape.part(33)(0)].blue = resize_img[i][j].blue;
             cimg[i-resize_img.nc()/2 + shape.part(33)(1)][j-resize_img.nr()/2 + shape.part(33)(0)].green = resize_img[i][j].green;
-
-
-            cout << shape.part(33)(0) << ", "<<shape.part(33)(1) << endl;
-        }
-    }
-    for(int i = 0; i < 5; i++ )
-    {
-        for(int j = 0; j < 5; j++) {
-        cimg[i][j].green = 0;
-        cimg[i][j].blue = 0;
         }
     }
 }
@@ -186,23 +178,23 @@ void stick_mustache(full_object_detection shape)
 void stick_glasses(full_object_detection shape)
 {
     rectangle rect = shape.get_rect();
-    long width = rect.right() - rect.left();
-    long height = (shape.part(41)(1) - shape.part(19)(1))*3; //left eyebrow to bottom of left eye 
+    long height = (shape.part(41)(1) - shape.part(19)(1))*3; //left eyebrow to bottom of left eye
+    long width = rect.right() - rect.left(); 
     resize_img.set_size(height, width);
     resize_image(origin_img, resize_img, interpolate_bilinear()); 
     
-    long m_y = shape.part(27)(0);
-    long m_x = shape.part(27)(1);
+    long m_x = shape.part(27)(0);
+    long m_y = shape.part(27)(1);
 
-    for(int i = 0; i < resize_img.nc(); ++i)
+    for(int i = 0; i < resize_img.nr(); ++i)
     {
-        for(int j = 0; j < resize_img.nr(); ++j)
+        for(int j = 0; j < resize_img.nc(); ++j)
         {
             if(resize_img[i][j].alpha == 0)
                 continue;
-            cimg[i - resize_img.nc()/2 + m_x][j - resize_img.nr()/2 + m_y].red = resize_img[i][j].red;
-            cimg[i - resize_img.nc()/2 + m_x ][j - resize_img.nr()/2 + m_y].blue = resize_img[i][j].blue;
-            cimg[i - resize_img.nc()/2 + m_x ][j - resize_img.nr()/2 + m_y].green = resize_img[i][j].green;
+            cimg[i - resize_img.nr()/2 + m_y][j - resize_img.nc()/2 + m_x].red = resize_img[i][j].red;
+            cimg[i - resize_img.nr()/2 + m_y][j - resize_img.nc()/2 + m_x].blue = resize_img[i][j].blue;
+            cimg[i - resize_img.nr()/2 + m_y][j - resize_img.nc()/2 + m_x].green = resize_img[i][j].green;
         }
     }
         
@@ -268,12 +260,16 @@ void stick_hat(full_object_detection shape)
 {
     try{
         long h = ((shape.part(21) + shape.part(22)) - shape.part(33))(1);
+        rectangle rect = shape.get_rect();
+        long width = rect.right() - rect.left();
+        long height = rect.bottom() - rect.top();
 
         dlib::vector<long int, 2l> fore = dlib::vector<long int, 2l>((shape.part(27))(0), h);
 
         int w = (int)((float)h/origin_img.nr() * origin_img.nc());
         cout << "(" << w << ", " << h << ")" << endl;
-        resize_img.set_size(w, h);
+        //resize_img.set_size(w, h);
+        resize_img.set_size(height, width);
         resize_image(origin_img, resize_img, interpolate_bilinear());
         
         int p = (int)fore(0);
@@ -281,13 +277,13 @@ void stick_hat(full_object_detection shape)
         int sw = (int)resize_img.nc()/2;
         int sh = (int)resize_img.nr()/2;
 
-        for(int i = -sw; i < sw; i++) {
-            for(int j = -sh; j < sh; j++) {
-                if(resize_img[i+sw][j+sh].alpha == 0)
+        for(int i = 0; i < resize_img.nc(); i++) {
+            for(int j = 0; j < resize_img.nr(); j++) {
+                if(resize_img[i+w][j+h].alpha == 0)
                     continue;
-                cimg[i+p][j+q].red = resize_img[i+sw][j+sh].red;
-                cimg[i+p][j+q].blue = resize_img[i+sw][j+sh].blue;
-                cimg[i+p][j+q].green = resize_img[i+sw][j+sh].green;
+                cimg[i+q-sw][j+p-sh].red = resize_img[i][j].red;
+                cimg[i+q-sw][j+p-sh].blue = resize_img[i][j].blue;
+                cimg[i+q-sw][j+p-sh].green = resize_img[i][j].green;
             }
         }
 
