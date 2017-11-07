@@ -20,9 +20,6 @@
 #include <unistd.h>
 #include <camera.h>
 #include <storage.h>
-#include <muse.h>
-#include <muse_camera.h>
-#include <muse_core.h>
 
 #define BUFLEN 512
 
@@ -134,11 +131,17 @@ static bool _storage_cb(int storage_id, storage_type_e type,
  */
 static bool _preview_resolution_cb(int width, int height, void *user_data)
 {
+	/*
     if (NULL != user_data) {
         int *resolution = (int *) user_data;
         resolution[0] = width;
         resolution[1] = height;
     }
+    */
+	int *resolution = (int *) user_data;
+	resolution[0] = width;
+	resolution[1] = height;
+	dlog_print(DLOG_DEBUG, "res: %d %d", width, height);
 
     return true;
 }
@@ -895,8 +898,9 @@ void _camera_preview_callback(camera_preview_data_s *frame, void *data)
 
     	// frame->data.double_plane.y_size  : 921600
     	// frame->data.double_plane.uv_size : 460800
-    	camera_attr_set_effect(cam_data.g_camera, cam_data.filter);
-    	dlog_print(DLOG_DEBUG, "hello", "%d", cam_data.filter);
+
+    	//camera_attr_set_effect(cam_data.g_camera, cam_data.filter);
+    	//dlog_print(DLOG_DEBUG, "hello", "%d", cam_data.filter);
 
     	/*
     	switch(cam_data.filter)

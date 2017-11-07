@@ -26,7 +26,7 @@
 #ifdef  LOG_TAG
 #undef  LOG_TAG
 #endif
-#define LOG_TAG "camera"
+#define LOG_TAG "FACE_FILTER"
 
 #define _DEBUG_MSG_LOG_BUFFER_SIZE_ 1024
 #define DLOG_PRINT_DEBUG_MSG(fmt, args...) do { char _log_[_DEBUG_MSG_LOG_BUFFER_SIZE_]; \
