@@ -16,18 +16,16 @@
 
 #include "main.h"
 #include "data.h"
-#include <stdio.h>
-#include <unistd.h>
-#include <camera.h>
-#include <storage.h>
-#include <muse.h>
-#include <muse_camera.h>
-#include <muse_core.h>
+#include "landmark.h"
+#include <image_util.h>
+#include <mv_face.h>
 
 #define BUFLEN 512
 
 typedef struct _camdata {
     camera_h g_camera; /* Camera handle */
+    camera_preview_data_s *frame; /* Frame handle */
+    media_packet_h media_packet;
     Evas_Object *cam_display;
     Evas_Object *cam_display_box;
     Evas_Object *display;
@@ -41,11 +39,17 @@ typedef struct _camdata {
     bool cam_prev;
     int filter;
     int sticker;
-
     int width;
     int height;
+
+    mv_source_h g_source;
+    mv_engine_config_h g_engine_config;
+    //mv_quadrangle_s face_roi;
+    //mv_face_tracking_model_h g_face_track_mode;
 } camdata;
+
 static camdata cam_data;
+static rgbmat rgb_frame;
 
 static char *camera_directory = NULL;
 
@@ -154,7 +158,7 @@ static bool _preview_resolution_cb(int width, int height, void *user_data)
  *                   function. This argument is not used in this case.
  */
 
-static bool _supported_preview_format_cb(camera_pixel_format_e format, void *user_data)
+static void _supported_preview_format_cb(camera_pixel_format_e format, void *user_data)
 {
 	dlog_print(DLOG_DEBUG, LOG_TAG, "%d", format);
 }
@@ -891,11 +895,12 @@ void _camera_preview_callback(camera_preview_data_s *frame, void *data)
 {
     if (frame->format == CAMERA_PIXEL_FORMAT_NV12 && frame->num_of_planes == 2)
 	{
+    	cam_data.frame = frame;
     	time_t sTime = clock();
 
     	// frame->data.double_plane.y_size  : 921600
     	// frame->data.double_plane.uv_size : 460800
-    	camera_attr_set_effect(cam_data.g_camera, cam_data.filter);
+    	//camera_attr_set_effect(cam_data.g_camera, cam_data.filter);
     	dlog_print(DLOG_DEBUG, "hello", "%d", cam_data.filter);
 
     	/*
@@ -1011,6 +1016,125 @@ static int camera_attr_set_sticker(int sticker)
 	return 0;
 }
 
+static void _image_util_completed_cb(media_packet_h *dst, int error_code, void* user_data)
+{
+	media_packet_destroy(cam_data.media_packet);
+	cam_data.media_packet = *dst;
+	dlog_print(DLOG_DEBUG, LOG_TAG, "Transformation finished.");
+	if(error_code != IMAGE_UTIL_ERROR_NONE || dst == NULL) {
+		DLOG_PRINT_ERROR("An error occurred during transformation." , error_code);
+	}
+
+	media_format_h fmt = NULL;
+	error_code = media_packet_get_format(*dst, &fmt);
+	if(error_code != MEDIA_PACKET_ERROR_NONE) {
+			DLOG_PRINT_ERROR("media_packet_get_format" , error_code);
+			return;
+	}
+
+	media_format_mimetype_e mimetype;
+	int width, height;
+
+	error_code = media_format_get_video_info(fmt, &mimetype, &width, &height, NULL, NULL);
+	if(error_code != MEDIA_FORMAT_ERROR_NONE) {
+		DLOG_PRINT_ERROR("media_format_get_video_info" , error_code);
+		media_format_unref(fmt);
+		return;
+	}
+
+	media_format_unref(fmt);
+
+	void *packet_buffer = NULL;
+
+	error_code = media_packet_get_buffer_data_ptr(*dst, &packet_buffer);
+	if(error_code != MEDIA_PACKET_ERROR_NONE) {
+		DLOG_PRINT_ERROR("An error occurred during transformation. Error code: %d." , error_code);
+		return;
+	}
+
+	if(mimetype == MEDIA_FORMAT_RGB888 || mimetype == MEDIA_FORMAT_ARGB)
+	{
+		rgb_frame.width = width;
+		rgb_frame.height = height;
+
+		error_code = image_util_extract_color_from_memory(packet_buffer, width, height, rgb_frame.rgb_r, rgb_frame.rgb_g, rgb_frame.rgb_b);
+		if(error_code != IMAGE_UTIL_ERROR_NONE) {
+				DLOG_PRINT_ERROR("image_util_extract_color_from_memory" , error_code);
+				return;
+		}
+	}
+
+}
+
+static void nv12_to_rgb()
+{
+	transformation_h handle;
+	int error_code = image_util_transform_create(&handle);
+	error_code = image_util_transform_set_hardware_acceleration(handle, true);
+
+	image_util_colorspace_e colorspace = IMAGE_UTIL_COLORSPACE_ARGB8888;
+
+	error_code = image_util_transform_set_colorspace(handle, colorspace);
+
+	error_code = image_util_transform_run(handle, cam_data.media_packet, _image_util_completed_cb, NULL);
+
+	error_code = image_util_transform_destroy(handle);
+
+}
+
+/*
+static void nv12_to_rgb(camera_preview_data_s frame)
+{
+	if(frame.format == CAMERA_PIXEL_FORMAT_NV12 && frame.num_of_planes == 2)
+	{
+		rgb_mat result;
+		result.width = frame.width;
+		result.height = frame.height;
+		int size = frame.data.double_plane.y_size;
+
+		result.r = (unsigned char *)malloc(sizeof(unsigned char)*size);
+		result.g = (unsigned char *)malloc(sizeof(unsigned char)*size);
+		result.b = (unsigned char *)malloc(sizeof(unsigned char)*size);
+
+		for(int i = 0; i < result.width * result.height; i++)
+		{
+			result.r[i] =frame.data.double_plane.y[i] + 1.402*(frame.data.double_plane.uv[i/2 + 1]);
+			result.g[i] =;
+			result.b[i] =;
+		}
+	}
+}
+*/
+//static void _camera_face_detected_cb(mv_source_h source, mv_engine_config_h engine_confg, mv_rectangle_s *face_locations, int number_of_faces, void* user_data)
+static void _camera_face_detected_cb(camera_detected_face_s* faces, int count, void* user_data)
+{
+	if(cam_data.sticker != 0)
+	{
+		if (cam_data.frame->format == CAMERA_PIXEL_FORMAT_NV12 && cam_data.frame->num_of_planes == 2)
+		{
+			//Transform to rgb
+			nv12_to_rgb();
+		}
+		//face_landmark(&rgb_frame, cam_data.sticker, face_locations, number_of_faces);
+		face_landmark(&rgb_frame, cam_data.sticker, faces, count);
+	}
+
+}
+
+static void _camera_media_packet_preview_cb(media_packet_h pkt, void* data)
+{
+	if (pkt == NULL)
+		return;
+
+	cam_data.media_packet = pkt;
+	int error_code = mv_source_fill_by_media_packet(cam_data.g_source, pkt);
+	if(error_code != MEDIA_VISION_ERROR_NONE)
+		DLOG_PRINT_ERROR("mv_source_fill error", error_code);
+
+}
+
+
+
 static void __camera_cb_sticker(void *data, Evas_Object *obj, void *event_info)
 {
 	 /*
@@ -1047,7 +1171,13 @@ static void __camera_cb_sticker(void *data, Evas_Object *obj, void *event_info)
 	    } else
 	        PRINT_MSG("Sticker set to %d", sticker);
 
-	    /* TODO: Apply sticker to preview image */
+	    camera_start_face_detection(cam_data.g_camera, _camera_face_detected_cb, NULL);
+
+	    /*
+	    error_code = mv_face_detect(cam_data.g_source, cam_data.g_engine_config, _camera_face_detected_cb, NULL);
+	    if(error_code != MEDIA_VISION_ERROR_NONE)
+	    	DLOG_PRINT_ERROR("face detection failed", error_code);
+	    */
 }
 
 /**
@@ -1068,9 +1198,20 @@ void camera_pop_cb()
     /* Unregister camera focus change callback. */
     camera_unset_focus_changed_cb(cam_data.g_camera);
 
+    media_packet_destroy(cam_data.media_packet);
+
+    /* Unregister camera preview callback. */
+    camera_unset_media_packet_preview_cb(cam_data.g_camera);
+
     /* Destroy camera handle. */
     camera_destroy(cam_data.g_camera);
     cam_data.g_camera = NULL;
+
+    /* Destroy source */
+    mv_destroy_source(cam_data.g_source);
+
+    /* Destroy engine */
+    mv_destroy_engine_config(cam_data.g_engine_config);
 
     /* Free the Camera directory path. */
     free(camera_directory);
@@ -1136,15 +1277,15 @@ void create_buttons_in_main_window(void)
     cam_data.preview_bt = _new_button(buf->tbox, "Start preview",
             __camera_cb_preview);
     cam_data.zoom_bt = _new_button(buf->tbox, "Zoom",
-            __camera_cb_zoom);
+    		__camera_cb_zoom);
     cam_data.brightness_bt = _new_button(buf->tbox, "Brightness",
-            __camera_cb_bright);
+    		__camera_cb_bright);
     cam_data.filter_bt = _new_button(buf->bbox, "Filter",
     		__camera_cb_filter);
     cam_data.sticker_bt = _new_button(buf->bbox, "Sticker",
     		__camera_cb_sticker);
     cam_data.photo_bt = _new_button(buf->bbox, "Take a photo",
-            __camera_cb_photo);
+    		__camera_cb_photo);
 
     /*
      * Disable buttons different than "Start preview" when the preview is not
@@ -1253,6 +1394,29 @@ void create_buttons_in_main_window(void)
         DLOG_PRINT_ERROR("camera_set_focus_changed_cb", error_code);
         PRINT_MSG("Could not set a callback for the focus changes.");
     }
+
+    /* Set the camera preview callback */
+    error_code = camera_set_media_packet_preview_cb(cam_data.g_camera, _camera_media_packet_preview_cb, NULL);
+
+    if (error_code != CAMERA_ERROR_NONE)
+    {
+    	DLOG_PRINT_ERROR("Could not get media packet", error_code);
+    }
+
+    /* Create the media vision engine
+    error_code = mv_create_engine_config(&cam_data.g_engine_config);
+    if (error_code != MEDIA_VISION_ERROR_NONE)
+    {
+        DLOG_PRINT_ERROR("Could not create media engine", error_code);
+    }
+
+    error_code = mv_engine_config_set_string_attribute(cam_data.g_engine_config, MV_FACE_DETECTION_MODEL_FILE_PATH,
+    		"/usr/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml");
+    if (error_code != MEDIA_VISION_ERROR_NONE)
+    {
+    	DLOG_PRINT_ERROR("Could not config engine", error_code);
+    }
+    */
 
     /* Get the path to the Camera directory: */
 

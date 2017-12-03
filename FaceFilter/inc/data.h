@@ -18,20 +18,24 @@
 #define _DATA_H
 
 #include "view.h"
+#include <stdio.h>
+#include <unistd.h>
+#include <storage.h>
+#include <camera.h>
 
 #define MAX_FILTER 30
 
+
+typedef struct{
+	camera_pixel_format_e format;
+	int width;
+	int height;
+
+	unsigned char* rgb_r;
+	unsigned char* rgb_g;
+	unsigned char* rgb_b;
+} rgbmat;
+
 void create_buttons_in_main_window(void);
-
-static int camera_attr_get_filter_range(int *min,
-        int *max);
-
-static int camera_attr_get_filter(int* filter);
-static int camera_attr_set_filter(int filter);
-static int camera_attr_get_sticker_range(int* min,
-        int* max);
-static int camera_attr_get_sticker(int* sticker);
-static int camera_attr_set_sticker(int sticker);
-
 
 #endif
