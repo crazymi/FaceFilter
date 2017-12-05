@@ -54,19 +54,18 @@
 
 //#include <dlib/image_processing/frontal_face_detector.h>
 //#include <dlib/image_processing/render_face_detections.h>
-#include <dlib/image_processing.h>
-#include <dlib/image_transforms.h>
+//#include <dlib/image_processing.h>
+//#include <dlib/image_transforms.h>
 //#include <dlib/image_io.h>
 #include <ctime>
-#include <iostream>
-#include <fstream>
+//#include <fstream>
 
 using namespace dlib;
 using namespace std;
 
 // ----------------------------------------------------------------------------------------
 
-void face_landmark(camera_preview_data_s* frame, int sticker, camera_detected_face_s *faces, int count)
+std::vector<full_object_detection> face_landmark(camera_preview_data_s* frame, int sticker, camera_detected_face_s *faces, int count)
 {  
     try
     {
@@ -82,11 +81,20 @@ void face_landmark(camera_preview_data_s* frame, int sticker, camera_detected_fa
         // as a command line argument.
         shape_predictor sp;
 
+        float time;
         clock_t begin = clock();
-        deserialize("shape_predictor_68_face_landmarks.dat") >> sp;
+        const char* resource_path = app_get_resource_path();
+        char *file_path = (char *) malloc(sizeof(char) * BUFLEN);
+
+        /* Create a full path to newly created file for storing the taken photo. */
+        snprintf(file_path, BUFLEN, "%s%s", resource_path,
+                        "shape_predictor_68_face_landmarks.dat");
+
+        deserialize(file_path) >> sp;
 
         {
         	dlog_print(DLOG_DEBUG, LOG_TAG, "deserialize: %f", (double)(clock() - begin) / CLOCKS_PER_SEC);
+        	time = (double)(clock() - begin) / CLOCKS_PER_SEC; // TM1: 14 sec..
         }
         dlog_print(DLOG_DEBUG, LOG_TAG, "processing image");
 
@@ -106,41 +114,46 @@ void face_landmark(camera_preview_data_s* frame, int sticker, camera_detected_fa
 			v_faces.push_back(face);
         }
 
+
+
+        begin = clock();
+        array2d<u_int64_t> img;
+        img.set_size(frame->width, frame->height);
+        if(frame->data.double_plane.y_size != frame->width * frame->height)
+        {
+        	//DLOG_PRINT_DEBUG("y_size: %d, width: %d, height: %d", frame->data.double_plane.y_size, frame->width, frame->height);
+        	//return NULL;
+        }
+
+        for(u_int64_t i = 0; i < frame->data.double_plane.y_size; i++)
+        {
+        	img[i%frame->width][i/frame->width] = (frame->data.double_plane.y)[i];
+        }
+        time = (double)(clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.411 sec
+
         // Now we will go ask the shape_predictor to tell us the pose of
         // each face we detected.
         std::vector<full_object_detection> shapes;
         for (unsigned long i = 0; i < count; ++i)
         {
         	begin = clock();
-        	/* TODO: Transform rgbmat to array2d<rgb_pixel> */
-        	//array2d<rgb_pixel> img;
-        	array2d<unsigned char> img;
-
-        	if(frame->data.double_plane.y_size != frame->width * frame->height)
-        	{
-        		//DLOG_PRINT_DEBUG("y_size: %d, width: %d, height: %d", frame->data.double_plane.y_size, frame->width, frame->height);
-        		return;
-        	}
-
-        	for(int i = 0; i < frame->data.double_plane.y_size; i++)
-        	{
-        		for(int j = 0;j < frame->width; j++)
-        		{
-        			for(int k = 0; k < frame->height; k++)
-        			{
-        				img[j][k] = frame->data.double_plane.y[i];
-        			}
-
-        		}
-        	}
-
         	full_object_detection shape = sp(img, v_faces[i]);
+        	time = (double)(clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.1 sec
 
         	{
         		dlog_print(DLOG_DEBUG, LOG_TAG, "shape predictor: %f", (double)(clock() - begin) / CLOCKS_PER_SEC);
         		dlog_print(DLOG_DEBUG, LOG_TAG, "number of parts: %d", shape.num_parts());
         	}
+        	int np = shape.num_parts();
+        	int part33_x = shape.part(33)(0);
+        	int part33_y = shape.part(33)(1);
+        	int part8_x = shape.part(8)(0);
+        	int part8_y = shape.part(8)(1);
 
+        	int part0_x = shape.part(0)(0);
+        	int part0_y = shape.part(0)(1);
+
+        	//draw_landmark(frame, shape);
         	/*
         	switch(sticker) {
         	case 1:
@@ -176,6 +189,7 @@ void face_landmark(camera_preview_data_s* frame, int sticker, camera_detected_fa
             win_faces.set_image(tile_images(face_chips));
             */
 
+        return shapes;
 
     }
 
@@ -185,6 +199,17 @@ void face_landmark(camera_preview_data_s* frame, int sticker, camera_detected_fa
     	dlog_print(DLOG_ERROR, LOG_TAG, e.what());
     }
 
+}
+
+void draw_landmark(camera_preview_data_s* frame, const full_object_detection shape)
+{
+	for(int i = 0; i < shape.num_parts(); i++)
+	{
+		int x = shape.part(i)(0);
+		int y = shape.part(i)(1);
+
+		frame->data.double_plane.y[x + y*frame->width] *= 2;
+	}
 }
 /*
 void sticker_mustache(const full_object_detection shape){

@@ -23,8 +23,9 @@
 #include <storage.h>
 #include <camera.h>
 
+#define BUFLEN 512
 #define MAX_FILTER 30
-
+#define MAX_STICKER 5
 
 typedef struct{
 	camera_pixel_format_e format;

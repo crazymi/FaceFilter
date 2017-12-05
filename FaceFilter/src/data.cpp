@@ -18,13 +18,11 @@
 #include "data.h"
 #include "landmark.h"
 
-
-#define BUFLEN 512
-
 typedef struct _camdata {
     camera_h g_camera; /* Camera handle */
     camera_preview_data_s *frame; /* Frame handle */
     //media_packet_h media_packet;
+    std::vector<dlib::full_object_detection> shapes;
 
     Evas_Object *cam_display;
     Evas_Object *cam_display_box;
@@ -890,8 +888,15 @@ void _camera_preview_callback(camera_preview_data_s *frame, void *data)
 {
     if (frame->format == CAMERA_PIXEL_FORMAT_NV12 && frame->num_of_planes == 2)
 	{
-    	cam_data.frame = frame;
+    	cam_data.frame = (camera_preview_data_s *)malloc(sizeof(camera_preview_data_s));
+    	memcpy(cam_data.frame, frame, sizeof(camera_preview_data_s ));
     	time_t sTime = clock();
+
+    	if(!cam_data.shapes.empty())
+    	{
+    		dlib::full_object_detection shape = cam_data.shapes[0];
+    		draw_landmark(frame, shape);
+    	}
 
     	// frame->data.double_plane.y_size  : 921600
     	// frame->data.double_plane.uv_size : 460800
@@ -1043,6 +1048,7 @@ static void _image_util_completed_cb(media_packet_h *dst, int error_code, void* 
 	void *packet_buffer = NULL;
 
 	error_code = media_packet_get_buffer_data_ptr(*dst, &packet_buffer);
+
 	if(error_code != MEDIA_PACKET_ERROR_NONE) {
 		DLOG_PRINT_ERROR("An error occurred during transformation. Error code: %d." , error_code);
 		return;
@@ -1112,7 +1118,10 @@ static void _camera_face_detected_cb(camera_detected_face_s* faces, int count, v
 		{
 
 		}
-		face_landmark(cam_data.frame, cam_data.sticker, faces, count);
+		cam_data.shapes = face_landmark(cam_data.frame, cam_data.sticker, faces, count);
+
+
+
 	}
 
 }
@@ -1166,6 +1175,11 @@ static void __camera_cb_sticker(void *data, Evas_Object *obj, void *event_info)
 	                    "Camera sticker is not supported on this device.");
 	    } else
 	        PRINT_MSG("Sticker set to %d", sticker);
+
+	    if (camera_set_preview_cb(cam_data.g_camera, _camera_preview_callback, NULL) == CAMERA_ERROR_NONE)
+	    {
+	    	PRINT_MSG("ready to modify");
+	    }
 
 	    error_code = camera_start_face_detection(cam_data.g_camera, _camera_face_detected_cb, NULL);
 	    if(CAMERA_ERROR_NONE != error_code)
@@ -1246,7 +1260,7 @@ void create_buttons_in_main_window(void)
      * Create the window with camera preview and buttons for manipulating the
      * camera and taking the photo.
      */
-    struct tmp *buf = _create_new_cd_display("Camera", NULL);
+    struct tmp *buf = (struct tmp*)_create_new_cd_display((char*)"Camera", NULL);
     cam_data.display = buf->mbox;
 
     /* Create a box for the camera preview. */
@@ -1265,18 +1279,18 @@ void create_buttons_in_main_window(void)
             EVAS_CALLBACK_RESIZE, _post_render_cb, &(cam_data.cam_display));
 
     /* Create buttons for the Camera. */
-    cam_data.preview_bt = _new_button(buf->tbox, "Start preview",
-            __camera_cb_preview);
-    cam_data.zoom_bt = _new_button(buf->tbox, "Zoom",
-    		__camera_cb_zoom);
-    cam_data.brightness_bt = _new_button(buf->tbox, "Brightness",
-    		__camera_cb_bright);
-    cam_data.filter_bt = _new_button(buf->bbox, "Filter",
-    		__camera_cb_filter);
-    cam_data.sticker_bt = _new_button(buf->bbox, "Sticker",
-    		__camera_cb_sticker);
-    cam_data.photo_bt = _new_button(buf->bbox, "Take a photo",
-    		__camera_cb_photo);
+    cam_data.preview_bt = _new_button(buf->tbox, (char *)"Start preview",
+            (void *)__camera_cb_preview);
+    cam_data.zoom_bt = _new_button(buf->tbox, (char*)"Zoom",
+    		(void *)__camera_cb_zoom);
+    cam_data.brightness_bt = _new_button(buf->tbox, (char*)"Brightness",
+    		(void *)__camera_cb_bright);
+    cam_data.filter_bt = _new_button(buf->bbox, (char *)"Filter",
+    		(void *)__camera_cb_filter);
+    cam_data.sticker_bt = _new_button(buf->bbox, (char *)"Sticker",
+    		(void *)__camera_cb_sticker);
+    cam_data.photo_bt = _new_button(buf->bbox, (char *)"Take a photo",
+    		(void *)__camera_cb_photo);
 
     /*
      * Disable buttons different than "Start preview" when the preview is not
@@ -1368,7 +1382,7 @@ void create_buttons_in_main_window(void)
     cam_data.height = resolution[0];
     cam_data.width = resolution[1];
 
-    camera_foreach_supported_preview_format(cam_data.g_camera, _supported_preview_format_cb, NULL);
+    //camera_foreach_supported_preview_format(cam_data.g_camera, _supported_preview_format_cb, NULL);
 
     /* Set the capture format for the camera. */
     error_code = camera_set_capture_format(cam_data.g_camera,
@@ -1387,11 +1401,11 @@ void create_buttons_in_main_window(void)
     }
 
     /* Set the camera preview callback */
-    error_code = camera_set_preview_cb(cam_data.g_camera, _camera_preview_callback, NULL);
+    /*error_code = camera_set_preview_cb(cam_data.g_camera, _camera_preview_callback, NULL);
     if (error_code != CAMERA_ERROR_NONE)
     {
     	DLOG_PRINT_ERROR("Could not get media packet", error_code);
-    }
+    }*/
 
     /* Get the path to the Camera directory: */
 
