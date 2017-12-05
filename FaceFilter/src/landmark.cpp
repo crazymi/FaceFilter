@@ -50,12 +50,13 @@
 #include "data.h"
 #include "main.h"
 #include "view.h"
+#include "landmark.h"
 
-#include <dlib/image_processing/frontal_face_detector.h>
+//#include <dlib/image_processing/frontal_face_detector.h>
 //#include <dlib/image_processing/render_face_detections.h>
 #include <dlib/image_processing.h>
 #include <dlib/image_transforms.h>
-#include <dlib/image_io.h>
+//#include <dlib/image_io.h>
 #include <ctime>
 #include <iostream>
 #include <fstream>
@@ -63,14 +64,9 @@
 using namespace dlib;
 using namespace std;
 
-void sticker_mustache(const full_object_detection& shape);
-void sticker_hairband(const full_object_detection shape ,int idx);
-void sticker_ear(const full_object_detection shape, int idx);
-void sticker_hat(const full_object_detection shape);
-void sticker_glasses(const full_object_detection shape);
 // ----------------------------------------------------------------------------------------
 
-void face_landmark(rgbmat *frame, int sticker, camera_detected_face_s *faces, int count)
+void face_landmark(camera_preview_data_s* frame, int sticker, camera_detected_face_s *faces, int count)
 {  
     try
     {
@@ -99,6 +95,16 @@ void face_landmark(rgbmat *frame, int sticker, camera_detected_face_s *faces, in
 
         /* TODO: camera_detected_face_s faces -> vector<rectangle> faces */
         //std::vector<rectangle> faces = detector(img);
+        std::vector<rectangle> v_faces;
+        for(int i = 0; i < count; i++)
+        {
+        	rectangle face;
+			face.set_top(faces[i].y);
+			face.set_bottom(faces[i].y + faces[i].height);
+			face.set_right(faces[i].x + faces[i].width);
+			face.set_left(faces[i].x);
+			v_faces.push_back(face);
+        }
 
         // Now we will go ask the shape_predictor to tell us the pose of
         // each face we detected.
@@ -107,14 +113,35 @@ void face_landmark(rgbmat *frame, int sticker, camera_detected_face_s *faces, in
         {
         	begin = clock();
         	/* TODO: Transform rgbmat to array2d<rgb_pixel> */
-        	array2d<rgb_pixel> img;
-        	full_object_detection shape = sp(img, faces[i]);
+        	//array2d<rgb_pixel> img;
+        	array2d<unsigned char> img;
+
+        	if(frame->data.double_plane.y_size != frame->width * frame->height)
+        	{
+        		//DLOG_PRINT_DEBUG("y_size: %d, width: %d, height: %d", frame->data.double_plane.y_size, frame->width, frame->height);
+        		return;
+        	}
+
+        	for(int i = 0; i < frame->data.double_plane.y_size; i++)
+        	{
+        		for(int j = 0;j < frame->width; j++)
+        		{
+        			for(int k = 0; k < frame->height; k++)
+        			{
+        				img[j][k] = frame->data.double_plane.y[i];
+        			}
+
+        		}
+        	}
+
+        	full_object_detection shape = sp(img, v_faces[i]);
 
         	{
         		dlog_print(DLOG_DEBUG, LOG_TAG, "shape predictor: %f", (double)(clock() - begin) / CLOCKS_PER_SEC);
         		dlog_print(DLOG_DEBUG, LOG_TAG, "number of parts: %d", shape.num_parts());
         	}
 
+        	/*
         	switch(sticker) {
         	case 1:
         		sticker_mustache(shape);
@@ -134,7 +161,7 @@ void face_landmark(rgbmat *frame, int sticker, camera_detected_face_s *faces, in
         	default:
         		break;
         	}
-
+*/
         	// You get the idea, you can get all the face part locations if
             // you want them.  Here we just store them in shapes so we can
             // put them on the screen.
@@ -148,6 +175,8 @@ void face_landmark(rgbmat *frame, int sticker, camera_detected_face_s *faces, in
             extract_image_chips(img, get_face_chip_details(shapes), face_chips);
             win_faces.set_image(tile_images(face_chips));
             */
+
+
     }
 
     catch (exception& e)
@@ -157,7 +186,7 @@ void face_landmark(rgbmat *frame, int sticker, camera_detected_face_s *faces, in
     }
 
 }
-
+/*
 void sticker_mustache(const full_object_detection shape){
     try{
         assign_image(out_img, in_img);
@@ -364,5 +393,6 @@ void sticker_glasses(const full_object_detection shape)
 		}
 	}
 }
+*/
 // ----------------------------------------------------------------------------------------
 

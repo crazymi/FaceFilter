@@ -1,15 +1,8 @@
-/*
- * landmark.h
- *
- *  Created on: Dec 3, 2017
- *      Author: plasma
- */
+#if !defined(_LANDMARK_H)
+#define _LANDMARK_H
 
-#ifndef LANDMARK_H_
-#define LANDMARK_H_
+#include "data.h"
 
-void face_landmark(rgbmat* rgb_frame, int sticker, camera_detected_face_s *faces, int count);
+void face_landmark(camera_preview_data_s* frame, int sticker, camera_detected_face_s *faces, int count);
 
-
-
-#endif /* LANDMARK_H_ */
+#endif
