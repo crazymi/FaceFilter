@@ -21,7 +21,6 @@
 typedef struct _camdata {
 	camera_h g_camera; /* Camera handle */
 	std::vector<dlib::rectangle> faces; /* detected faces */
-	std::vector<dlib::full_object_detection> shapes; /* detected landmark */
 	dlib::shape_predictor sp; /* shape predictor */
 
 	Evas_Object *cam_display;
@@ -911,10 +910,10 @@ static void _camera_face_detected_cb(camera_detected_face_s* faces, int count,
 	/* convert camera_detected_face_s faces to std::vector<rectangle> faces */
 	for (int i = 0; i < count; i++) {
 		dlib::rectangle face;
-		face.set_top(faces[i].y);
-		face.set_bottom(faces[i].y + faces[i].height);
-		face.set_right(faces[i].x + faces[i].width);
-		face.set_left(faces[i].x);
+		face.set_top(faces[i].x + faces[i].width);
+		face.set_bottom(faces[i].x);
+		face.set_right(faces[i].y);
+		face.set_left(faces[i].y + faces[i].height);
 		cam_data.faces.push_back(face);
 
 		//PRINT_MSG("Face[%d]_width: %d, Face[%d]_height: %d\n", i, faces[i].width, i, faces[i].height);
@@ -925,71 +924,54 @@ static void _camera_face_detected_cb(camera_detected_face_s* faces, int count,
 	//PRINT_MSG("face format conversion takes %f sec", time);
 }
 
-std::vector<dlib::full_object_detection> face_landmark(camera_preview_data_s *frame, int count)
+void face_landmark(camera_preview_data_s *frame, int count)
 {
-	clock_t begin;
+	//clock_t begin;
 	dlib::array2d<u_int64_t> img;
-	img.set_size(frame->height, frame->width);
+	img.set_size(frame->width, frame->height);
 	if (frame->data.double_plane.y_size != frame->width * frame->height) {
 		PRINT_MSG("Error: y_size: %d, width: %d, height: %d",
 				frame->data.double_plane.y_size, frame->width, frame->height);
 		//return NULL;
 	}
 
-	begin = clock();
+	//begin = clock();
 	for (u_int64_t i = 0; i < frame->data.double_plane.y_size; i++) {
-		img[i / frame->width][i % frame->width] = (frame->data.double_plane.y)[i];
+		img[i / frame->height][i % frame->height] = (frame->data.double_plane.y)[i];
 	}
-	float time = (double) (clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.3 sec
+	//float time = (double) (clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.3 sec
 	//PRINT_MSG("frame format conversion takes %f sec", time);
 
 	// Now we will go ask the shape_predictor to tell us the pose of
 	// each face we detected.
-	std::vector<dlib::full_object_detection> shapes;
 	for (unsigned long i = 0; i < count; ++i) {
-		begin = clock();
+		//begin = clock();
 		dlib::full_object_detection shape = cam_data.sp(img, cam_data.faces[i]);
-		time = (double) (clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.1 sec
+		//time = (double) (clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.1 sec
 		//PRINT_MSG("Finding landmark takes %f sec", time);
 
-		//draw_landmark(frame, shape);
-		/*
-		 switch(sticker) {
+		draw_landmark(frame, shape);
+
+		 switch(cam_data.sticker) {
 		 case 1:
-		 sticker_mustache(shape);
+		 //sticker_mustache(shape);
 		 break;
 		 case 2:
-		 sticker_hairband(shape);
+		 //sticker_hairband(shape);
 		 break;
 		 case 3:
-		 sticker_ear(shape);
+		 //sticker_ear(shape);
 		 break;
 		 case 4:
-		 sticker_hat(shape);
+		 //sticker_hat(shape);
 		 break;
 		 case 5:
-		 sticker_glasses(shape);
+		 //sticker_glasses(shape);
 		 break;
 		 default:
 		 break;
 		 }
-		 */
-		// You get the idea, you can get all the face part locations if
-		// you want them.  Here we just store them in shapes so we can
-		// put them on the screen.
-		shapes.push_back(shape);
 	}
-
-	// We can also extract copies of each face that are cropped, rotated upright,
-	// and scaled to a standard size as shown here:
-	/*
-	 dlib::array<array2d<rgb_pixel> > face_chips;
-	 extract_image_chips(img, get_face_chip_details(shapes), face_chips);
-	 win_faces.set_image(tile_images(face_chips));
-	 */
-
-	return shapes;
-
 }
 
 void _camera_preview_callback(camera_preview_data_s *frame, void *user_data) {
@@ -1001,19 +983,10 @@ void _camera_preview_callback(camera_preview_data_s *frame, void *user_data) {
 		size_t count = buf.size();
 		/* get face landmark */
 		if (count > 0) {
-			clock_t sTime = clock();
-			//cam_data.shapes = face_landmark(frame, &cam_data.sp,
-			//cam_data.sticker, cam_data.faces, count);
-			cam_data.shapes = face_landmark(frame, count);
-			float time = (double) (clock() - sTime) / CLOCKS_PER_SEC; // 0.3 sec in TM1 :-(
+			//clock_t sTime = clock();
+			face_landmark(frame, count);
+			//float time = (double) (clock() - sTime) / CLOCKS_PER_SEC; // 0.3 sec in TM1
 			//PRINT_MSG("Face landmark takes %f sec", time);
-			if (!cam_data.shapes.empty()) {
-				dlib::full_object_detection shape = cam_data.shapes[0];
-				sTime = clock();
-				draw_landmark(frame, shape);
-				time = (double) (clock() - sTime) / CLOCKS_PER_SEC;
-				cam_data.shapes.clear();
-			}
 
 			switch (cam_data.sticker) {
 			case 0: //
@@ -1032,51 +1005,8 @@ void _camera_preview_callback(camera_preview_data_s *frame, void *user_data) {
 				break;
 			}
 
-			// frame->data.double_plane.y_size  : 921600
-			// frame->data.double_plane.uv_size : 460800
-			//camera_attr_set_effect(cam_data.g_camera, cam_data.filter);
-			//dlog_print(DLOG_DEBUG, "hello", "%d", cam_data.filter);
-
-			/*
-			 switch(cam_data.filter)
-			 {
-			 case 0: // original
-			 camera_attr_set_effect(cam_data.g_camera, CAMERA_ATTR_EFFECT_NEGATIVE);
-			 break;
-			 case 1: // sepia
-			 _chroma_mod_sepia(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
-			 break;
-			 case 2: // grayscale
-			 _grayscale_mod(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
-			 break;
-			 case 3: // invert
-			 _invert_mod(frame->data.double_plane.y, frame->data.double_plane.y_size + frame->data.double_plane.uv_size);
-			 break;
-			 case 4: // emboss
-			 //    	    _emboss_mod(frame->data.double_plane.y, frame->data.double_plane.y_size);
-			 _emboss_mod_uv(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
-			 break;
-			 case 5: // gaussian
-			 //_gaussian_mod(frame->data.double_plane.y, frame->data.double_plane.y_size);
-			 //_gaussian_mod_uv(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
-			 break;
-			 case 6: // pinky
-			 _pinky_mod(frame->data.double_plane.y, frame->data.double_plane.y_size);
-			 _pinky_mod_uv(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
-			 break;
-			 case 7: // nored
-			 _nored_mod(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
-			 break;
-			 case 8: // noblue
-			 _noblue_mod(frame->data.double_plane.uv, frame->data.double_plane.uv_size);
-			 break;
-			 default:
-			 break;
-			 }
-			 */
-
-			time_t eTime = clock();
-			float gap = (float) (eTime - sTime) / (CLOCKS_PER_SEC);
+			//time_t eTime = clock();
+			//float gap = (float) (eTime - sTime) / (CLOCKS_PER_SEC);
 		}
 	} else {
 		dlog_print(DLOG_ERROR, LOG_TAG,
@@ -1214,10 +1144,6 @@ void camera_pop_cb() {
 	camera_destroy(cam_data.g_camera);
 	cam_data.g_camera = NULL;
 
-	/* Destroy source */
-	// mv_destroy_source(cam_data.g_source);
-	/* Destroy engine */
-	//mv_destroy_engine_config(cam_data.g_engine_config);
 	/* Free the Camera directory path. */
 	free(camera_directory);
 }
@@ -1399,13 +1325,6 @@ void create_buttons_in_main_window(void) {
 		DLOG_PRINT_ERROR("camera_set_focus_changed_cb", error_code);
 		PRINT_MSG("Could not set a callback for the focus changes.");
 	}
-
-	/* Set the camera preview callback */
-	/*error_code = camera_set_preview_cb(cam_data.g_camera, _camera_preview_callback, NULL);
-	 if (error_code != CAMERA_ERROR_NONE)
-	 {
-	 DLOG_PRINT_ERROR("Could not get media packet", error_code);
-	 }*/
 
 	/* Get the path to the Camera directory: */
 

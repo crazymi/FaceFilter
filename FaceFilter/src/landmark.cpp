@@ -52,102 +52,12 @@
 #include "view.h"
 #include "landmark.h"
 
-//#include <dlib/image_processing/frontal_face_detector.h>
-//#include <dlib/image_processing/render_face_detections.h>
-//#include <dlib/image_processing.h>
-//#include <dlib/image_transforms.h>
-//#include <dlib/image_io.h>
 #include <ctime>
-//#include <fstream>
 
 using namespace dlib;
 using namespace std;
 
 // ----------------------------------------------------------------------------------------
-
-std::vector<full_object_detection> face_landmark(camera_preview_data_s* frame, shape_predictor* psp, int sticker, std::vector<rectangle> faces, int count)
-{  
-    try
-    {
-        // We need a shape_predictor.  This is the tool that will predict face
-        // landmark positions given an image and face bounding box.  Here we are just
-        // loading the model from the shape_predictor_68_face_landmarks.dat file
-
-    	shape_predictor sp = *psp;
-        clock_t begin;
-        array2d<u_int64_t> img;
-        img.set_size(frame->height, frame->width);
-        if(frame->data.double_plane.y_size != frame->width * frame->height)
-        {
-        	PRINT_MSG("Error: y_size: %d, width: %d, height: %d", frame->data.double_plane.y_size, frame->width, frame->height);
-        	//return NULL;
-        }
-
-        begin = clock();
-        for(u_int64_t i = 0; i < frame->data.double_plane.y_size; i++)
-        {
-        	img[i/frame->width][i%frame->width] = (frame->data.double_plane.y)[i];
-        }
-        float time = (double)(clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.09 sec
-        //PRINT_MSG("frame format conversion takes %f sec", time);
-
-        // Now we will go ask the shape_predictor to tell us the pose of
-        // each face we detected.
-        std::vector<full_object_detection> shapes;
-        for (unsigned long i = 0; i < count; ++i)
-        {
-        	begin = clock();
-        	full_object_detection shape = sp(img, faces[i]);
-        	time = (double)(clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.1 sec
-        	PRINT_MSG("Finding landmark takes %f sec", time);
-
-        	//draw_landmark(frame, shape);
-        	/*
-        	switch(sticker) {
-        	case 1:
-        		sticker_mustache(shape);
-        		break;
-        	case 2:
-        		sticker_hairband(shape);
-        		break;
-        	case 3:
-        		sticker_ear(shape);
-        		break;
-        	case 4:
-        		sticker_hat(shape);
-        		break;
-        	case 5:
-        		sticker_glasses(shape);
-        		break;
-        	default:
-        		break;
-        	}
-*/
-        	// You get the idea, you can get all the face part locations if
-            // you want them.  Here we just store them in shapes so we can
-            // put them on the screen.
-            shapes.push_back(shape);
-        }
-            
-        // We can also extract copies of each face that are cropped, rotated upright,
-            // and scaled to a standard size as shown here:
-            /*
-            dlib::array<array2d<rgb_pixel> > face_chips;
-            extract_image_chips(img, get_face_chip_details(shapes), face_chips);
-            win_faces.set_image(tile_images(face_chips));
-            */
-
-        return shapes;
-
-    }
-
-    catch (exception& e)
-    {
-    	dlog_print(DLOG_ERROR, LOG_TAG, "\nexception thrown!");
-    	dlog_print(DLOG_ERROR, LOG_TAG, e.what());
-    }
-
-}
 
 void draw_landmark(camera_preview_data_s* frame, const full_object_detection shape)
 {
