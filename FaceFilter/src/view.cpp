@@ -148,7 +148,7 @@ void *_create_new_cd_display(char *name, void *callback)
     elm_box_padding_set(tbox, 0, padding_between_buttons);
     elm_box_horizontal_set(tbox, EINA_TRUE);
     evas_object_size_hint_align_set(tbox, EVAS_HINT_FILL, EVAS_HINT_FILL);
-    evas_object_size_hint_weight_set(tbox, EVAS_HINT_EXPAND, 0.1);
+    evas_object_size_hint_weight_set(tbox, EVAS_HINT_EXPAND, 0.0);
     elm_box_pack_end(box, tbox);
     evas_object_show(tbox);
 
@@ -157,16 +157,32 @@ void *_create_new_cd_display(char *name, void *callback)
     elm_box_padding_set(mbox, 0, padding_between_buttons);
     elm_box_horizontal_set(mbox, EINA_FALSE);
     evas_object_size_hint_align_set(mbox, EVAS_HINT_FILL, EVAS_HINT_FILL);
-    evas_object_size_hint_weight_set(mbox, EVAS_HINT_EXPAND, 0.8);
+    evas_object_size_hint_weight_set(mbox, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
     elm_box_pack_end(box, mbox);
     evas_object_show(mbox);
+
+    /* Create a message box */
+    GLOBAL_DEBUG_BOX = elm_entry_add(box);
+    elm_entry_editable_set(GLOBAL_DEBUG_BOX, EINA_FALSE);
+    elm_entry_scrollable_set(GLOBAL_DEBUG_BOX, EINA_TRUE);
+    elm_scroller_policy_set(GLOBAL_DEBUG_BOX, ELM_SCROLLER_POLICY_OFF,
+            ELM_SCROLLER_POLICY_ON);
+    evas_object_size_hint_align_set(GLOBAL_DEBUG_BOX, EVAS_HINT_FILL,
+            EVAS_HINT_FILL);
+    evas_object_size_hint_weight_set(GLOBAL_DEBUG_BOX, EVAS_HINT_EXPAND,
+            0.2);
+    elm_box_pack_end(box, GLOBAL_DEBUG_BOX);
+    evas_object_show(GLOBAL_DEBUG_BOX);
+
+    /* Create the "Clear" button */
+    _new_button(box, (char*)"Clear", (void*)_btn_clear_cb);
 
     /* Create bottom button box */
     Evas_Object *bbox = elm_box_add(box);
     elm_box_padding_set(bbox, 0, padding_between_buttons);
     elm_box_horizontal_set(bbox, EINA_TRUE);
     evas_object_size_hint_align_set(bbox, EVAS_HINT_FILL, EVAS_HINT_FILL);
-    evas_object_size_hint_weight_set(bbox, EVAS_HINT_EXPAND, 0.1);
+    evas_object_size_hint_weight_set(bbox, EVAS_HINT_EXPAND, 0.0);
     elm_box_pack_end(box, bbox);
     evas_object_show(bbox);
 
@@ -188,22 +204,6 @@ void *_create_new_cd_display(char *name, void *callback)
     elm_box_pack_end(box, ebox);
     evas_object_show(ebox);
 */
-    /* Create a message box
-    GLOBAL_DEBUG_BOX = elm_entry_add(ebox);
-    elm_entry_editable_set(GLOBAL_DEBUG_BOX, EINA_FALSE);
-    elm_entry_scrollable_set(GLOBAL_DEBUG_BOX, EINA_TRUE);
-    elm_scroller_policy_set(GLOBAL_DEBUG_BOX, ELM_SCROLLER_POLICY_OFF,
-            ELM_SCROLLER_POLICY_ON);
-    evas_object_size_hint_align_set(GLOBAL_DEBUG_BOX, EVAS_HINT_FILL,
-            EVAS_HINT_FILL);
-    evas_object_size_hint_weight_set(GLOBAL_DEBUG_BOX, EVAS_HINT_EXPAND,
-            EVAS_HINT_EXPAND);
-    elm_box_pack_end(ebox, GLOBAL_DEBUG_BOX);
-    evas_object_show(GLOBAL_DEBUG_BOX);
-*/
-    /* Create the "Clear" button */
-   // _new_button(box, "Clear", _btn_clear_cb);
-
     //return bbox;
     struct tmp *buf = (struct tmp*)malloc(sizeof(struct tmp));
     buf->tbox = tbox;

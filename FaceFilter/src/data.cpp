@@ -20,7 +20,7 @@
 
 typedef struct _camdata {
 	camera_h g_camera; /* Camera handle */
-	camera_detected_face_s* faces; /* detected faces */
+	std::vector<dlib::rectangle> faces; /* detected faces */
 	std::vector<dlib::full_object_detection> shapes; /* detected ladnmark */
 	dlib::shape_predictor sp; /* shape predictor */
 
@@ -899,129 +899,46 @@ static int camera_attr_set_sticker(int sticker) {
 	return 0;
 }
 
-/*
- static void _image_util_completed_cb(media_packet_h *dst, int error_code, void* user_data)
- {
- media_packet_destroy(cam_data.media_packet);
- cam_data.media_packet = *dst;
- dlog_print(DLOG_DEBUG, LOG_TAG, "Transformation finished.");
- if(error_code != IMAGE_UTIL_ERROR_NONE || dst == NULL) {
- DLOG_PRINT_ERROR("An error occurred during transformation." , error_code);
- }
-
- media_format_h fmt = NULL;
- error_code = media_packet_get_format(*dst, &fmt);
- if(error_code != MEDIA_PACKET_ERROR_NONE) {
- DLOG_PRINT_ERROR("media_packet_get_format" , error_code);
- return;
- }
-
- media_format_mimetype_e mimetype;
- int width, height;
-
- error_code = media_format_get_video_info(fmt, &mimetype, &width, &height, NULL, NULL);
- if(error_code != MEDIA_FORMAT_ERROR_NONE) {
- DLOG_PRINT_ERROR("media_format_get_video_info" , error_code);
- media_format_unref(fmt);
- return;
- }
-
- media_format_unref(fmt);
-
- void *packet_buffer = NULL;
-
- error_code = media_packet_get_buffer_data_ptr(*dst, &packet_buffer);
-
- if(error_code != MEDIA_PACKET_ERROR_NONE) {
- DLOG_PRINT_ERROR("An error occurred during transformation. Error code: %d." , error_code);
- return;
- }
-
- if(mimetype == MEDIA_FORMAT_RGB888 || mimetype == MEDIA_FORMAT_ARGB)
- {
- rgb_frame.width = width;
- rgb_frame.height = height;
-
- error_code = image_util_extract_color_from_memory(packet_buffer, width, height, rgb_frame.rgb_r, rgb_frame.rgb_g, rgb_frame.rgb_b);
- if(error_code != IMAGE_UTIL_ERROR_NONE) {
- DLOG_PRINT_ERROR("image_util_extract_color_from_memory" , error_code);
- return;
- }
- }
-
- }
- */
-
-/*
- static void nv12_to_rgb()
- {
- transformation_h handle;
- int error_code = image_util_transform_create(&handle);
- error_code = image_util_transform_set_hardware_acceleration(handle, true);
-
- image_util_colorspace_e colorspace = IMAGE_UTIL_COLORSPACE_ARGB8888;
-
- error_code = image_util_transform_set_colorspace(handle, colorspace);
-
- error_code = image_util_transform_run(handle, cam_data.media_packet, _image_util_completed_cb, NULL);
-
- error_code = image_util_transform_destroy(handle);
-
- }
- */
-/*
- static void nv12_to_rgb(camera_preview_data_s frame)
- {
- if(frame.format == CAMERA_PIXEL_FORMAT_NV12 && frame.num_of_planes == 2)
- {
- rgb_mat result;
- result.width = frame.width;
- result.height = frame.height;
- int size = frame.data.double_plane.y_size;
-
- result.r = (unsigned char *)malloc(sizeof(unsigned char)*size);
- result.g = (unsigned char *)malloc(sizeof(unsigned char)*size);
- result.b = (unsigned char *)malloc(sizeof(unsigned char)*size);
-
- for(int i = 0; i < result.width * result.height; i++)
- {
- result.r[i] =frame.data.double_plane.y[i] + 1.402*(frame.data.double_plane.uv[i/2 + 1]);
- result.g[i] =;
- result.b[i] =;
- }
- }
- }
- */
-
 static void _camera_face_detected_cb(camera_detected_face_s* faces, int count,
 		void* user_data) {
-	cam_data.faces = faces;
 	cam_data.count = count;
+	PRINT_MSG("Face detected: %d", count);
+	for (int i = 0; i < count; i++) {
+		PRINT_MSG("Face[%d]_width: %d, Face[%d]_height: %d\n", i,
+				faces[i].width, i, faces[i].height);
+		PRINT_MSG("Face[%d]_x: %d, Face[%d]_y: %d\n", i, faces[i].x, i,
+				faces[i].y);
+	}
+
+	float time;
+	clock_t begin = clock();
+
+	/* convert camera_detected_face_s faces to std::vector<rectangle> faces */
+	for (int i = 0; i < count; i++) {
+		dlib::rectangle face;
+		face.set_top(faces[i].y);
+		face.set_bottom(faces[i].y + faces[i].height);
+		face.set_right(faces[i].x + faces[i].width);
+		face.set_left(faces[i].x);
+		cam_data.faces.push_back(face);
+	}
+
+	time = (double) (clock() - begin) / CLOCKS_PER_SEC;
+	PRINT_MSG("face format conversion takes %f sec", time);
+
 }
-/*
- static void _camera_media_packet_preview_cb(media_packet_h pkt, void* data)
- {
- if (pkt == NULL)
- return;
-
- cam_data.media_packet = pkt;
- int error_code = mv_source_fill_by_media_packet(cam_data.g_source, pkt);
- if(error_code != MEDIA_VISION_ERROR_NONE)
- DLOG_PRINT_ERROR("mv_source_fill error", error_code);
-
- }
- */
 
 void _camera_preview_callback(camera_preview_data_s *frame, void *data) {
 	if (frame->format == CAMERA_PIXEL_FORMAT_NV12
 			&& frame->num_of_planes == 2) {
-		time_t sTime = clock();
 
 		/* get face landmark */
 		if (cam_data.count != 0) {
-
+			clock_t sTime = clock();
 			cam_data.shapes = face_landmark(frame, cam_data.sp,
 					cam_data.sticker, cam_data.faces, cam_data.count);
+			float time = (double) (clock() - sTime) / CLOCKS_PER_SEC;
+			PRINT_MSG("Face landmark takes %f sec", time);
 			if (!cam_data.shapes.empty()) {
 				dlib::full_object_detection shape = cam_data.shapes[0];
 				draw_landmark(frame, shape);
@@ -1150,6 +1067,7 @@ static void __camera_cb_sticker(void *data, Evas_Object *obj,
 				"shape_predictor_68_face_landmarks.dat");
 
 		dlib::deserialize(file_path) >> cam_data.sp;
+		free(file_path);
 
 		/*
 		 * * The following actions (stop->start -> stop -> start preview) are required
@@ -1382,7 +1300,7 @@ void create_buttons_in_main_window(void) {
 
 	/* 2. Set found supported resolution for the camera preview. */
 	//error_code = camera_set_preview_resolution(cam_data.g_camera, resolution[0],
-			//resolution[1]);
+	//resolution[1]);
 	error_code = camera_set_preview_resolution(cam_data.g_camera, 480, 360);
 	if (CAMERA_ERROR_NONE != error_code) {
 		DLOG_PRINT_ERROR("camera_set_preview_resolution", error_code);
