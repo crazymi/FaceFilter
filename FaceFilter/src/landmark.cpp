@@ -65,7 +65,7 @@ using namespace std;
 
 // ----------------------------------------------------------------------------------------
 
-std::vector<full_object_detection> face_landmark(camera_preview_data_s* frame, shape_predictor sp, int sticker, std::vector<rectangle> faces, int count)
+std::vector<full_object_detection> face_landmark(camera_preview_data_s* frame, shape_predictor* psp, int sticker, std::vector<rectangle> faces, int count)
 {  
     try
     {
@@ -73,7 +73,8 @@ std::vector<full_object_detection> face_landmark(camera_preview_data_s* frame, s
         // landmark positions given an image and face bounding box.  Here we are just
         // loading the model from the shape_predictor_68_face_landmarks.dat file
 
-        clock_t begin = clock();
+    	shape_predictor sp = *psp;
+        clock_t begin;
         array2d<u_int64_t> img;
         img.set_size(frame->height, frame->width);
         if(frame->data.double_plane.y_size != frame->width * frame->height)
@@ -87,8 +88,8 @@ std::vector<full_object_detection> face_landmark(camera_preview_data_s* frame, s
         {
         	img[i/frame->width][i%frame->width] = (frame->data.double_plane.y)[i];
         }
-        float time = (double)(clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.411 sec
-        PRINT_MSG("frame format conversion takes %f sec", time);
+        float time = (double)(clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.09 sec
+        //PRINT_MSG("frame format conversion takes %f sec", time);
 
         // Now we will go ask the shape_predictor to tell us the pose of
         // each face we detected.
@@ -99,19 +100,6 @@ std::vector<full_object_detection> face_landmark(camera_preview_data_s* frame, s
         	full_object_detection shape = sp(img, faces[i]);
         	time = (double)(clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.1 sec
         	PRINT_MSG("Finding landmark takes %f sec", time);
-
-        	int np = shape.num_parts();
-        	int part33_x = shape.part(33)(0);
-        	int part33_y = shape.part(33)(1);
-        	int part8_x = shape.part(8)(0);
-        	int part8_y = shape.part(8)(1);
-
-        	int part0_x = shape.part(0)(0);
-        	int part0_y = shape.part(0)(1);
-
-        	PRINT_MSG("part33_x: %d part33_y: %d", part33_x, part33_y);
-        	PRINT_MSG("part8_x: %d part8_y: %d", part8_x, part8_y);
-        	PRINT_MSG("part0_x: %d part0_y: %d", part0_x, part0_y);
 
         	//draw_landmark(frame, shape);
         	/*

@@ -21,7 +21,7 @@
 typedef struct _camdata {
 	camera_h g_camera; /* Camera handle */
 	std::vector<dlib::rectangle> faces; /* detected faces */
-	std::vector<dlib::full_object_detection> shapes; /* detected ladnmark */
+	std::vector<dlib::full_object_detection> shapes; /* detected landmark */
 	dlib::shape_predictor sp; /* shape predictor */
 
 	Evas_Object *cam_display;
@@ -901,17 +901,12 @@ static int camera_attr_set_sticker(int sticker) {
 
 static void _camera_face_detected_cb(camera_detected_face_s* faces, int count,
 		void* user_data) {
-	cam_data.count = count;
-	PRINT_MSG("Face detected: %d", count);
-	for (int i = 0; i < count; i++) {
-		PRINT_MSG("Face[%d]_width: %d, Face[%d]_height: %d\n", i,
-				faces[i].width, i, faces[i].height);
-		PRINT_MSG("Face[%d]_x: %d, Face[%d]_y: %d\n", i, faces[i].x, i,
-				faces[i].y);
-	}
-
+	//PRINT_MSG("Face detected: %d", count);
 	float time;
 	clock_t begin = clock();
+
+	if(!cam_data.faces.empty())
+		cam_data.faces.clear();
 
 	/* convert camera_detected_face_s faces to std::vector<rectangle> faces */
 	for (int i = 0; i < count; i++) {
@@ -921,27 +916,103 @@ static void _camera_face_detected_cb(camera_detected_face_s* faces, int count,
 		face.set_right(faces[i].x + faces[i].width);
 		face.set_left(faces[i].x);
 		cam_data.faces.push_back(face);
+
+		//PRINT_MSG("Face[%d]_width: %d, Face[%d]_height: %d\n", i, faces[i].width, i, faces[i].height);
+		//PRINT_MSG("Face[%d]_x: %d, Face[%d]_y: %d\n", i, faces[i].x, i,	faces[i].y);
 	}
 
 	time = (double) (clock() - begin) / CLOCKS_PER_SEC;
-	PRINT_MSG("face format conversion takes %f sec", time);
+	//PRINT_MSG("face format conversion takes %f sec", time);
+}
+
+std::vector<dlib::full_object_detection> face_landmark(camera_preview_data_s *frame, int count)
+{
+	clock_t begin;
+	dlib::array2d<u_int64_t> img;
+	img.set_size(frame->height, frame->width);
+	if (frame->data.double_plane.y_size != frame->width * frame->height) {
+		PRINT_MSG("Error: y_size: %d, width: %d, height: %d",
+				frame->data.double_plane.y_size, frame->width, frame->height);
+		//return NULL;
+	}
+
+	begin = clock();
+	for (u_int64_t i = 0; i < frame->data.double_plane.y_size; i++) {
+		img[i / frame->width][i % frame->width] = (frame->data.double_plane.y)[i];
+	}
+	float time = (double) (clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.3 sec
+	//PRINT_MSG("frame format conversion takes %f sec", time);
+
+	// Now we will go ask the shape_predictor to tell us the pose of
+	// each face we detected.
+	std::vector<dlib::full_object_detection> shapes;
+	for (unsigned long i = 0; i < count; ++i) {
+		begin = clock();
+		dlib::full_object_detection shape = cam_data.sp(img, cam_data.faces[i]);
+		time = (double) (clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.1 sec
+		//PRINT_MSG("Finding landmark takes %f sec", time);
+
+		//draw_landmark(frame, shape);
+		/*
+		 switch(sticker) {
+		 case 1:
+		 sticker_mustache(shape);
+		 break;
+		 case 2:
+		 sticker_hairband(shape);
+		 break;
+		 case 3:
+		 sticker_ear(shape);
+		 break;
+		 case 4:
+		 sticker_hat(shape);
+		 break;
+		 case 5:
+		 sticker_glasses(shape);
+		 break;
+		 default:
+		 break;
+		 }
+		 */
+		// You get the idea, you can get all the face part locations if
+		// you want them.  Here we just store them in shapes so we can
+		// put them on the screen.
+		shapes.push_back(shape);
+	}
+
+	// We can also extract copies of each face that are cropped, rotated upright,
+	// and scaled to a standard size as shown here:
+	/*
+	 dlib::array<array2d<rgb_pixel> > face_chips;
+	 extract_image_chips(img, get_face_chip_details(shapes), face_chips);
+	 win_faces.set_image(tile_images(face_chips));
+	 */
+
+	return shapes;
 
 }
 
-void _camera_preview_callback(camera_preview_data_s *frame, void *data) {
+void _camera_preview_callback(camera_preview_data_s *frame, void *user_data) {
 	if (frame->format == CAMERA_PIXEL_FORMAT_NV12
 			&& frame->num_of_planes == 2) {
 
+		std::vector<dlib::rectangle> buf =
+				*((std::vector<dlib::rectangle>*) user_data);
+		size_t count = buf.size();
 		/* get face landmark */
-		if (cam_data.count != 0) {
+		if (count > 0) {
 			clock_t sTime = clock();
-			cam_data.shapes = face_landmark(frame, cam_data.sp,
-					cam_data.sticker, cam_data.faces, cam_data.count);
-			float time = (double) (clock() - sTime) / CLOCKS_PER_SEC;
-			PRINT_MSG("Face landmark takes %f sec", time);
+			//cam_data.shapes = face_landmark(frame, &cam_data.sp,
+			//cam_data.sticker, cam_data.faces, count);
+			cam_data.shapes = face_landmark(frame, count);
+			float time = (double) (clock() - sTime) / CLOCKS_PER_SEC; // 0.3 sec in TM1 :-(
+			//PRINT_MSG("Face landmark takes %f sec", time);
 			if (!cam_data.shapes.empty()) {
 				dlib::full_object_detection shape = cam_data.shapes[0];
+				sTime = clock();
 				draw_landmark(frame, shape);
+				time = (double) (clock() - sTime) / CLOCKS_PER_SEC;
+				cam_data.shapes.clear();
 			}
 
 			switch (cam_data.sticker) {
@@ -1100,7 +1171,7 @@ static void __camera_cb_sticker(void *data, Evas_Object *obj,
 	}
 
 	error_code = camera_set_preview_cb(cam_data.g_camera,
-			_camera_preview_callback, NULL);
+			_camera_preview_callback, &cam_data.faces);
 	if (CAMERA_ERROR_NONE != error_code) {
 		DLOG_PRINT_ERROR("camera_set_preview_cb", error_code);
 	}
@@ -1112,7 +1183,7 @@ static void __camera_cb_sticker(void *data, Evas_Object *obj,
 	}
 
 	error_code = camera_start_face_detection(cam_data.g_camera,
-			_camera_face_detected_cb, NULL);
+			_camera_face_detected_cb, &cam_data.faces);
 	if (CAMERA_ERROR_NONE != error_code) {
 		DLOG_PRINT_ERROR("camera_start_face_detection error", error_code);
 		return;
