@@ -17,6 +17,7 @@
 #include "main.h"
 #include "data.h"
 #include "landmark.h"
+#include "imageutils.h"
 
 typedef struct _camdata {
 	camera_h g_camera; /* Camera handle */
@@ -40,6 +41,8 @@ typedef struct _camdata {
 	int count;
 } camdata;
 
+
+static imageinfo imgarr[10];
 static camdata cam_data;
 //static rgbmat rgb_frame;
 
@@ -1356,4 +1359,6 @@ void create_buttons_in_main_window(void) {
 		DLOG_PRINT_ERROR("storage_get_directory", error_code);
 		PRINT_MSG("Could not get the path to the Camera directory.");
 	}
+
+	_image_util_start_cb(&imgarr[0]);
 }

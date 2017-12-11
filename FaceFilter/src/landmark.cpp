@@ -76,6 +76,8 @@ void draw_landmark(camera_preview_data_s* frame, const full_object_detection sha
 			}
 	}
 }
+
+
 /*
 void sticker_mustache(const full_object_detection shape){
     try{

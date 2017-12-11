@@ -18,6 +18,7 @@
 #define _DATA_H
 
 #include "view.h"
+#include "imageutils.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <storage.h>

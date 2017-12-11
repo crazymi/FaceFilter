@@ -18,6 +18,7 @@
 #define _MAIN_H_
 
 #include <dlog.h>
+#include "view.h"
 
 #if !defined(PACKAGE)
 #define PACKAGE "org.example.camera"
