@@ -17,50 +17,71 @@ void _image_util_imgcpy(camera_preview_data_s* frame, imageinfo* imginfo, int p,
 	int fh = frame->height;
 	int fw = frame->width;
 
+	p -= sw/2;
+	q -= sh/2;
+
 	int pt = p + q*fw;
 	int pti = 0;
-/*
-	for(int i=0;i<sw;i++)
-	{
-		for(int j=0;j<sh;j++)
-		{
-			if(imginfo->data[pti+j] <= 200)
-				frame->data.double_plane.y[pt+j] = imginfo->data[pti+j];
-		}
-		pt += fw;
-		pti += sh;
-		if(pt > frame->data.double_plane.y_size || pti > sy_size)
-			break;
-	}
 
-	return;
-	// below is using memcpy, ignore alpha value
-*/
+#ifdef ALPHA
 	// copy Y plane
 	for(int i=0;i<sw;i++)
 	{
+		if(pt > frame->data.double_plane.y_size || pti > sy_size)
+			break;
 		memcpy(frame->data.double_plane.y + pt, imginfo->data + pti, sizeof(unsigned char)*sh);
 		pt += fw;
 		pti += sh;
-		if(pt > frame->data.double_plane.y_size || pti > sy_size)
-			break;
 	}
 
-	p = p/2;
-	q = q/2;
 	// copy UV plane
-	pt = (p + q*fw);
+	p /=2;
+	q /=2;
+	pt = (p + q*fw/2)*2;
 	pti = sy_size;
-	if(pt % 2 ==0) pt++;
 
 	for(int i=0;i<sw/2;i++)
 	{
+		if(pt > frame->data.double_plane.uv_size || pti > imginfo->size)
+			break;
 		memcpy(frame->data.double_plane.uv + pt, imginfo->data + pti, sizeof(unsigned char)*sh);
 		pt += fw;
 		pti += sh;
-		if(pt > frame->data.double_plane.uv_size || pti > imginfo->size)
-			break;
 	}
+#else
+	for(int i=0;i<sw;i++)
+	{
+		if(pt >= frame->data.double_plane.y_size || pti >= sy_size)
+			break;
+		for(int j=0;j<sh;j++)
+		{
+			if(pt+j < frame->data.double_plane.y_size && pti+j < sy_size)
+				if(imginfo->data[pti+j] <= 220)
+					frame->data.double_plane.y[pt+j] = imginfo->data[pti+j];
+		}
+		pt += fw;
+		pti += sh;
+	}
+
+	// copy UV plane
+	p /=2;
+	q /=2;
+	pt = (p + q*fw/2)*2-1;
+	pti = sy_size;
+
+	for(int i=0;i<sw/2;i++)
+	{
+		if(pt >= frame->data.double_plane.uv_size || pti >= imginfo->size)
+			break;
+		for(int j=0;j<sh;j++)
+		{
+			if(pt+j < frame->data.double_plane.uv_size && pti+j < imginfo->size)
+				frame->data.double_plane.uv[pt+j] = imginfo->data[pti+j];
+		}
+		pt += fw;
+		pti += sh;
+	}
+#endif
 }
 
 void _image_util_start_cb(imageinfo* imginfo)
