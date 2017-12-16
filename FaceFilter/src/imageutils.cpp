@@ -13,14 +13,29 @@ void _image_util_imgcpy(camera_preview_data_s* frame, imageinfo* imginfo, int p,
 	int sh = imginfo->height;
 	int sw = imginfo->width;
 	int sy_size = sh*sw;
-	int suv_size = sh*sw/4;
 
 	int fh = frame->height;
 	int fw = frame->width;
 
 	int pt = p + q*fw;
 	int pti = 0;
+/*
+	for(int i=0;i<sw;i++)
+	{
+		for(int j=0;j<sh;j++)
+		{
+			if(imginfo->data[pti+j] <= 200)
+				frame->data.double_plane.y[pt+j] = imginfo->data[pti+j];
+		}
+		pt += fw;
+		pti += sh;
+		if(pt > frame->data.double_plane.y_size || pti > sy_size)
+			break;
+	}
 
+	return;
+	// below is using memcpy, ignore alpha value
+*/
 	// copy Y plane
 	for(int i=0;i<sw;i++)
 	{
@@ -30,7 +45,22 @@ void _image_util_imgcpy(camera_preview_data_s* frame, imageinfo* imginfo, int p,
 		if(pt > frame->data.double_plane.y_size || pti > sy_size)
 			break;
 	}
+
+	p = p/2;
+	q = q/2;
 	// copy UV plane
+	pt = (p + q*fw);
+	pti = sy_size;
+	if(pt % 2 ==0) pt++;
+
+	for(int i=0;i<sw/2;i++)
+	{
+		memcpy(frame->data.double_plane.uv + pt, imginfo->data + pti, sizeof(unsigned char)*sh);
+		pt += fw;
+		pti += sh;
+		if(pt > frame->data.double_plane.uv_size || pti > imginfo->size)
+			break;
+	}
 }
 
 void _image_util_start_cb(imageinfo* imginfo)

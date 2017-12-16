@@ -964,11 +964,9 @@ void face_landmark(camera_preview_data_s *frame, int count)
 		//time = (double) (clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.1 sec
 		//PRINT_MSG("Finding landmark takes %f sec", time);
 
-		// draw_landmark(frame, shape);
-
+		draw_landmark(frame, shape);
 		int x = shape.part(i)(1);
 		int y = frame->height - shape.part(i)(0);
-
 		if(imgarr != NULL && imgarr[0].size > 0)
 		{
 			_image_util_imgcpy(frame, &imgarr[0], x, y);
