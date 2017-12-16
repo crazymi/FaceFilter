@@ -10,16 +10,20 @@
 
 #include <image_util.h>
 #include <storage.h>
+#include <camera.h>
 
 typedef struct _imageinfo{
 	unsigned char* data;
 	int size;
+	int width;
+	int height;
+	int error;
 }imageinfo;
 
+void _image_util_imgcpy(camera_preview_data_s* frame, imageinfo* imginfo, int p, int q);
+
+void _image_util_start_cb(imageinfo* imginfo);
+
 const char *_map_colorspace(image_util_colorspace_e color_space);
-
-void _image_util_start_cb(void* user_data);
-
-void _image_util_completed_cb(media_packet_h *dst, int error_code, void *user_data);
 
 #endif /* IMAGEUTILS_H_ */

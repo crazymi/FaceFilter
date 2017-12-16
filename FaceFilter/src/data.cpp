@@ -41,7 +41,6 @@ typedef struct _camdata {
 	int count;
 } camdata;
 
-
 static imageinfo imgarr[10];
 static camdata cam_data;
 //static rgbmat rgb_frame;
@@ -855,6 +854,10 @@ static void __camera_cb_filter(void *data, Evas_Object *obj, void *event_info) {
 	 */
 	int min, max;
 
+//	_image_util_start_cb(NULL);
+
+	return;
+
 	int error_code = camera_attr_get_filter_range(&min, &max);
 	if (CAMERA_ERROR_NONE != error_code) {
 		DLOG_PRINT_ERROR("camera_attr_get_filter_range", error_code);
@@ -961,7 +964,15 @@ void face_landmark(camera_preview_data_s *frame, int count)
 		//time = (double) (clock() - begin) / CLOCKS_PER_SEC; // TM1: 0.1 sec
 		//PRINT_MSG("Finding landmark takes %f sec", time);
 
-		draw_landmark(frame, shape);
+		// draw_landmark(frame, shape);
+
+		int x = shape.part(i)(1);
+		int y = frame->height - shape.part(i)(0);
+
+		if(imgarr != NULL && imgarr[0].size > 0)
+		{
+			_image_util_imgcpy(frame, &imgarr[0], x, y);
+		}
 
 		 switch(cam_data.sticker) {
 		 case 1:
@@ -1361,4 +1372,5 @@ void create_buttons_in_main_window(void) {
 	}
 
 	_image_util_start_cb(&imgarr[0]);
+	PRINT_MSG("Got the imgarr : %d", imgarr[0].size);
 }
